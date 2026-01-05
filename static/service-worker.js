@@ -2,8 +2,9 @@
 
 const CACHE_NAME = "artha-cache-v5";
 const OFFLINE_URL = "/static/offline.html";
+
 const ASSETS_TO_CACHE = [
-    "/",
+  // Offline fallback page (must be a static asset)
     OFFLINE_URL,
 
     // PWA
@@ -13,7 +14,6 @@ const ASSETS_TO_CACHE = [
     // Icons (match your manifest)
     "/static/icons/icon-192.png",
     "/static/icons/icon-512.png",
-    // Optional but recommended
     "/static/icons/icon-192-maskable.png",
     "/static/icons/icon-512-maskable.png",
 
@@ -35,7 +35,7 @@ const ASSETS_TO_CACHE = [
     "/static/js/theme.js",
     "/static/js/chart.js",
     "/static/js/widgets.js",
-    "/static/js/toast.js"
+    "/static/js/toast.js",
     ];
 
     self.addEventListener("install", (event) => {
@@ -53,12 +53,15 @@ const ASSETS_TO_CACHE = [
     });
 
     self.addEventListener("fetch", (event) => {
+    // Don't touch non-GET requests (POST/PUT/etc). Let the network handle them.
+    if (event.request.method !== "GET") return;
+
     // Navigations: network first, fallback to offline page
     if (event.request.mode === "navigate") {
         event.respondWith(fetch(event.request).catch(() => caches.match(OFFLINE_URL)));
         return;
     }
 
-    // Assets: cache first, fallback to network
+    // Static assets: cache first, fallback to network
     event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
