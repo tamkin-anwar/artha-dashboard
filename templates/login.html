@@ -16,7 +16,9 @@
         {% endwith %}
 
         <form method="POST" class="space-y-4" role="form">
-            <!-- Removed CSRF token line -->
+            <!-- CSRF token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <label for="username" class="sr-only">Username</label>
             <input 
                 id="username"
