@@ -2,42 +2,63 @@
 import { updateChartData } from "./chart.js";
 import { showToast } from "./toast.js";
 
-const ariaLiveRegion = document.createElement("div");
-ariaLiveRegion.setAttribute("aria-live", "assertive");
-ariaLiveRegion.classList.add("sr-only");
-document.body.appendChild(ariaLiveRegion);
-
-let saveTimeout;
+let ariaLiveRegion = null;
+let saveTimeout = null;
 
 /**
- * Debounce wrapper for saving edits
+ * Read CSRF token from <meta name="csrf-token" content="...">
+ * base.html must include:
+ * <meta name="csrf-token" content="{{ csrf_token() }}">
  */
-function debounceSaveTransaction(e) {
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+    }
+
+    function csrfHeaders() {
+    const token = getCsrfToken();
+
+    // If this is empty, you're almost certainly seeing cached HTML from the service worker.
+    if (!token) {
+        console.warn("[CSRF] Missing meta csrf-token. base.html may be cached/stale.");
+    }
+
+    return {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": token,
+        "X-CSRF-Token": token,
+    };
+    }
+
+    /**
+     * Debounce wrapper for saving edits
+     */
+    function debounceSaveTransaction(e) {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => saveTransaction(e), 300);
-}
+    }
 
-/**
- * Format number to $0.00
- */
-function formatMoney(value) {
+    /**
+     * Format number to $0.00
+     */
+    function formatMoney(value) {
     const num = Number(value);
     if (Number.isNaN(num)) return "$0.00";
     return `$${num.toFixed(2)}`;
-}
+    }
 
-/**
- * Keep dataset type consistent (CSS handles coloring)
- */
-function applyAmountTypeDataset(amountEl, type) {
+    /**
+     * Keep dataset type consistent (CSS handles coloring)
+     */
+    function applyAmountTypeDataset(amountEl, type) {
     if (!amountEl) return;
     amountEl.dataset.type = type;
-}
+    }
 
-/**
- * Fetch totals and update Summary UI
- */
-async function updateSummaryUI() {
+    /**
+     * Fetch totals and update Summary UI
+     */
+    async function updateSummaryUI() {
     const incomeEl = document.getElementById("finance-income");
     const expenseEl = document.getElementById("finance-expense");
     const balanceEl = document.getElementById("finance-balance");
@@ -45,7 +66,8 @@ async function updateSummaryUI() {
 
     try {
         const res = await fetch("/api/finance_totals", {
-            headers: { "X-Requested-With": "XMLHttpRequest" }
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
         });
         if (!res.ok) throw new Error("Failed to fetch totals");
 
@@ -56,26 +78,27 @@ async function updateSummaryUI() {
     } catch (err) {
         console.warn("Could not update summary UI:", err);
     }
-}
+    }
 
-/**
- * Undo delete transaction (AJAX)
- * Expects: { message, row_html }
- */
-async function undoDeleteTransaction() {
+    /**
+     * Undo delete transaction (AJAX)
+     * Expects: { message, row_html }
+     */
+    async function undoDeleteTransaction() {
     try {
         const res = await fetch("/undo_delete_transaction", {
-            method: "POST",
-            headers: { "X-Requested-With": "XMLHttpRequest" }
+        method: "POST",
+        credentials: "same-origin",
+        headers: csrfHeaders(),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            const msg = data?.message || "Undo failed";
-            showToast(msg, "error");
-            ariaLiveRegion.textContent = msg;
-            return;
+        const msg = data?.message || "Undo failed";
+        showToast(msg, "error");
+        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+        return;
         }
 
         const html = data?.row_html || "";
@@ -86,19 +109,19 @@ async function undoDeleteTransaction() {
         const list = document.querySelector("ul.space-y-3");
 
         if (restoredRow && list) {
-            list.prepend(restoredRow);
+        list.prepend(restoredRow);
 
-            const typeSelect = restoredRow.querySelector(".tx-type");
-            const amountEl = restoredRow.querySelector(".tx-amount");
-            if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+        const typeSelect = restoredRow.querySelector(".tx-type");
+        const amountEl = restoredRow.querySelector(".tx-amount");
+        if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
 
-            attachRowListeners(restoredRow);
+        attachRowListeners(restoredRow);
 
-            const msg = data?.message || "Transaction restored.";
-            showToast(msg, "success");
-            ariaLiveRegion.textContent = msg;
+        const msg = data?.message || "Transaction restored.";
+        showToast(msg, "success");
+        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
         } else {
-            showToast("Transaction restored, but UI could not render the row.", "error");
+        showToast("Transaction restored, but UI could not render the row.", "error");
         }
 
         await updateChartData();
@@ -106,14 +129,14 @@ async function undoDeleteTransaction() {
     } catch (err) {
         console.error("Undo delete transaction error:", err);
         showToast("Network error while undoing delete", "error");
-        ariaLiveRegion.textContent = "Network error while undoing delete";
+        if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while undoing delete";
     }
-}
+    }
 
-/**
- * Attach delete listener to a row delete form (AJAX)
- */
-function attachDeleteListener(row) {
+    /**
+     * Attach delete listener to a row delete form (AJAX)
+     */
+    function attachDeleteListener(row) {
     const deleteForm = row.querySelector(".tx-delete-form");
     if (!deleteForm) return;
 
@@ -130,61 +153,60 @@ function attachDeleteListener(row) {
         rowEl.classList.add("bg-yellow-100");
 
         try {
-            const res = await fetch(deleteForm.action, {
-                method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            });
+        const res = await fetch(deleteForm.action, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+        });
 
-            const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}));
 
-            if (!res.ok) {
-                const msg = data?.message || "Delete failed";
-                rowEl.classList.remove("bg-yellow-100");
-                rowEl.classList.add("bg-red-100");
-                rowEl.removeAttribute("aria-busy");
-                setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
-
-                showToast(msg, "error");
-                ariaLiveRegion.textContent = msg;
-                return;
-            }
-
-            // Remove row from DOM
-            rowEl.remove();
-
-            const msg = data?.message || "Transaction deleted";
-            ariaLiveRegion.textContent = msg;
-
-            // ✅ Premium UX: action toast with Undo (10s window on server)
-            if (data?.can_undo) {
-                showToast("Transaction deleted", "info", 10000, {
-                    actionText: "Undo",
-                    onAction: () => undoDeleteTransaction()
-                });
-            } else {
-                showToast(msg, "info");
-            }
-
-            await updateChartData();
-            await updateSummaryUI();
-        } catch (err) {
-            console.error("Network error deleting transaction:", err);
-
+        if (!res.ok) {
+            const msg = data?.message || "Delete failed";
             rowEl.classList.remove("bg-yellow-100");
             rowEl.classList.add("bg-red-100");
             rowEl.removeAttribute("aria-busy");
             setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
 
-            showToast("Network error while deleting transaction", "error");
-            ariaLiveRegion.textContent = "Network error while deleting transaction";
+            showToast(msg, "error");
+            if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+            return;
+        }
+
+        rowEl.remove();
+
+        const msg = data?.message || "Transaction deleted";
+        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+
+        if (data?.can_undo) {
+            showToast("Transaction deleted", "info", 10000, {
+            actionText: "Undo",
+            onAction: () => undoDeleteTransaction(),
+            });
+        } else {
+            showToast(msg, "info");
+        }
+
+        await updateChartData();
+        await updateSummaryUI();
+        } catch (err) {
+        console.error("Network error deleting transaction:", err);
+
+        rowEl.classList.remove("bg-yellow-100");
+        rowEl.classList.add("bg-red-100");
+        rowEl.removeAttribute("aria-busy");
+        setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
+
+        showToast("Network error while deleting transaction", "error");
+        if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while deleting transaction";
         }
     });
-}
+    }
 
-/**
- * Attach inline edit listeners to a single transaction row
- */
-function attachRowListeners(row) {
+    /**
+     * Attach inline edit listeners to a single transaction row
+     */
+    function attachRowListeners(row) {
     const desc = row.querySelector(".tx-desc");
     const amount = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
@@ -193,44 +215,44 @@ function attachRowListeners(row) {
 
     if (desc) {
         desc.addEventListener("keydown", (e) => {
-            const calcDisplay = document.getElementById("calc-display");
-            if (calcDisplay && document.activeElement === calcDisplay) return;
+        const calcDisplay = document.getElementById("calc-display");
+        if (calcDisplay && document.activeElement === calcDisplay) return;
 
-            if (e.key === "Enter") {
-                e.preventDefault();
-                desc.blur();
-            }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            desc.blur();
+        }
         });
         desc.addEventListener("blur", debounceSaveTransaction);
     }
 
     if (amount) {
         amount.addEventListener("keydown", (e) => {
-            const calcDisplay = document.getElementById("calc-display");
-            if (calcDisplay && document.activeElement === calcDisplay) return;
+        const calcDisplay = document.getElementById("calc-display");
+        if (calcDisplay && document.activeElement === calcDisplay) return;
 
-            if (e.key === "Enter") {
-                e.preventDefault();
-                amount.blur();
-            }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            amount.blur();
+        }
         });
         amount.addEventListener("blur", debounceSaveTransaction);
     }
 
     if (typeSelect) {
         typeSelect.addEventListener("change", (e) => {
-            const rowEl = e.target.closest("li[data-id]");
-            const amountEl = rowEl?.querySelector(".tx-amount");
-            applyAmountTypeDataset(amountEl, e.target.value);
-            debounceSaveTransaction(e);
+        const rowEl = e.target.closest("li[data-id]");
+        const amountEl = rowEl?.querySelector(".tx-amount");
+        applyAmountTypeDataset(amountEl, e.target.value);
+        debounceSaveTransaction(e);
         });
     }
-}
+    }
 
-/**
- * Save transaction edits (inline)
- */
-async function saveTransaction(e) {
+    /**
+     * Save transaction edits (inline)
+     */
+    async function saveTransaction(e) {
     const row = e.target.closest("li[data-id]");
     if (!row) return;
 
@@ -258,26 +280,27 @@ async function saveTransaction(e) {
 
     try {
         const res = await fetch(`/update_transaction/${id}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify({ description: desc, amount, type }),
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            "Content-Type": "application/json",
+            ...csrfHeaders(),
+        },
+        body: JSON.stringify({ description: desc, amount, type }),
         });
 
         const responseData = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            row.classList.remove("bg-yellow-100");
-            row.classList.add("bg-red-100");
-            row.removeAttribute("aria-busy");
-            setTimeout(() => row.classList.remove("bg-red-100"), 1000);
+        row.classList.remove("bg-yellow-100");
+        row.classList.add("bg-red-100");
+        row.removeAttribute("aria-busy");
+        setTimeout(() => row.classList.remove("bg-red-100"), 1000);
 
-            const errorMsg = responseData?.message || "Transaction update failed";
-            showToast(errorMsg, "error");
-            ariaLiveRegion.textContent = errorMsg;
-            return;
+        const errorMsg = responseData?.message || "Transaction update failed";
+        showToast(errorMsg, "error");
+        if (ariaLiveRegion) ariaLiveRegion.textContent = errorMsg;
+        return;
         }
 
         row.classList.remove("bg-yellow-100");
@@ -290,7 +313,7 @@ async function saveTransaction(e) {
 
         const successMsg = responseData?.message || "Transaction updated successfully";
         showToast(successMsg, "success");
-        ariaLiveRegion.textContent = successMsg;
+        if (ariaLiveRegion) ariaLiveRegion.textContent = successMsg;
 
         await updateChartData();
         await updateSummaryUI();
@@ -303,96 +326,119 @@ async function saveTransaction(e) {
         setTimeout(() => row.classList.remove("bg-red-100"), 1000);
 
         showToast("Network error while updating transaction", "error");
-        ariaLiveRegion.textContent = "Network error while updating transaction";
+        if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while updating transaction";
     }
-}
+    }
 
-/**
- * Handle add transaction form (no reload)
- */
-function handleAddTransactionForm(form) {
+    /**
+     * Handle add transaction form (no reload)
+     */
+    function handleAddTransactionForm(form) {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        const csrfToken = getCsrfToken();
         const formData = new FormData(form);
+
         const description = (formData.get("description") || "").trim();
         const amount = (formData.get("amount") || "").toString().trim();
 
         if (!description || !amount || Number.isNaN(parseFloat(amount))) {
-            showToast("Please provide valid details", "error");
-            return;
+        showToast("Please provide valid details", "error");
+        return;
+        }
+
+        // Add CSRF field if missing (your template should already have it, but this makes it bulletproof)
+        if (!formData.get("csrf_token") && csrfToken) {
+        formData.append("csrf_token", csrfToken);
         }
 
         try {
-            const res = await fetch(form.action, {
-                method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" },
-                body: formData
-            });
+        const res = await fetch(form.action, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+            body: formData,
+        });
 
-            if (!res.ok) {
-                const maybeJson = await res.json().catch(() => null);
-                const msg = maybeJson?.message || "Error adding transaction";
-                showToast(msg, "error");
-                return;
-            }
+        if (!res.ok) {
+            const maybeJson = await res.json().catch(() => null);
+            const msg = maybeJson?.message || "Error adding transaction";
+            showToast(msg, "error");
+            return;
+        }
 
-            const html = await res.text();
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = html;
+        const html = await res.text();
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
 
-            const newRow = tempDiv.querySelector(`li[data-id]`);
-            if (!newRow) {
-                showToast("Transaction added but UI could not render the row", "error");
-                return;
-            }
+        const newRow = tempDiv.querySelector("li[data-id]");
+        if (!newRow) {
+            showToast("Transaction added but UI could not render the row", "error");
+            return;
+        }
 
-            const list = document.querySelector("ul.space-y-3");
-            if (!list) {
-                showToast("Transaction added but list container not found", "error");
-                return;
-            }
+        const list = document.querySelector("ul.space-y-3");
+        if (!list) {
+            showToast("Transaction added but list container not found", "error");
+            return;
+        }
 
-            list.appendChild(newRow);
+        list.appendChild(newRow);
 
-            const typeSelect = newRow.querySelector(".tx-type");
-            const amountEl = newRow.querySelector(".tx-amount");
-            if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+        const typeSelect = newRow.querySelector(".tx-type");
+        const amountEl = newRow.querySelector(".tx-amount");
+        if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
 
-            attachRowListeners(newRow);
+        attachRowListeners(newRow);
 
-            showToast("Transaction added!", "success");
+        showToast("Transaction added!", "success");
 
-            await updateChartData();
-            await updateSummaryUI();
+        await updateChartData();
+        await updateSummaryUI();
 
-            form.reset();
+        form.reset();
         } catch (err) {
-            console.error("Error adding transaction:", err);
-            showToast("Error adding transaction", "error");
+        console.error("Error adding transaction:", err);
+        showToast("Error adding transaction", "error");
         }
     });
-}
+    }
 
-/**
- * Apply dataset types on load for all rows
- */
-function applyAllTransactionDatasets() {
-    document.querySelectorAll("li[data-id]").forEach(row => {
+    /**
+     * Apply dataset types on load for all rows
+     */
+    function applyAllTransactionDatasets() {
+    document.querySelectorAll("li[data-id]").forEach((row) => {
         const typeSelect = row.querySelector(".tx-type");
         const amountEl = row.querySelector(".tx-amount");
         if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
     });
-}
+    }
 
-document.addEventListener("DOMContentLoaded", async () => {
-    document.querySelectorAll("li[data-id]").forEach(row => attachRowListeners(row));
+    function initTransactions() {
+    // Create aria live region safely (after body exists)
+    if (!ariaLiveRegion) {
+        ariaLiveRegion = document.createElement("div");
+        ariaLiveRegion.setAttribute("aria-live", "assertive");
+        ariaLiveRegion.classList.add("sr-only");
+        document.body.appendChild(ariaLiveRegion);
+    }
+
+    document.querySelectorAll("li[data-id]").forEach((row) => attachRowListeners(row));
     applyAllTransactionDatasets();
 
     const addTransactionForm = document.querySelector('form[action*="add_transaction"]');
     if (addTransactionForm) handleAddTransactionForm(addTransactionForm);
 
-    await updateSummaryUI();
-});
+    updateSummaryUI();
+    }
+
+    // Bind reliably even if DOMContentLoaded already fired
+    if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTransactions);
+    } else {
+    initTransactions();
+}
 
 export { saveTransaction };
