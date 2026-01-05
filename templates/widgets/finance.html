@@ -7,6 +7,9 @@
             class="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-2"
             autocomplete="off">
 
+            <!-- CSRF -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <input type="text"
                 name="description"
                 placeholder="Description"
