@@ -1,6 +1,10 @@
 <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
     <h2 class="text-lg font-semibold mb-2">📝 Notes</h2>
+
+    <!-- ADD NOTE -->
     <form method="POST" class="space-y-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
         <textarea 
             name="note" 
             rows="3" 
@@ -8,7 +12,10 @@
             class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
             required
         ></textarea>
-        <button type="submit" class="w-full p-2 rounded bg-green-600 text-white hover:bg-green-700">Add Note</button>
+
+        <button type="submit" class="w-full p-2 rounded bg-green-600 text-white hover:bg-green-700">
+            Add Note
+        </button>
     </form>
 
     <ul class="mt-4 space-y-2 text-sm">
@@ -26,7 +33,11 @@
             >
                 {{ note.content }}
             </div>
+
+            <!-- DELETE NOTE -->
             <form action="{{ url_for('delete_note', note_id=note.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <button 
                     type="submit" 
                     onclick="return confirm('Delete this note?')" 

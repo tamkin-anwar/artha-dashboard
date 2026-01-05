@@ -3,7 +3,6 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from sqlalchemy import func
 from flask import (
     Flask, render_template, redirect, url_for,
     request, flash, session, jsonify
@@ -14,7 +13,9 @@ from flask_login import (
     login_user, logout_user,
     login_required, current_user
 )
+from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import func
 
 # -------------------------
 # Setup
@@ -27,7 +28,31 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "kewpew")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'instance', 'site.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# CSRF settings
+app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
+
 logging.basicConfig(level=logging.INFO)
+
+# -------------------------
+# CSRF Protection
+# -------------------------
+csrf = CSRFProtect(app)
+
+@app.context_processor
+def inject_csrf_token():
+    # allows {{ csrf_token() }} in templates
+    return dict(csrf_token=generate_csrf)
+
+def is_ajax_request() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    logging.info("CSRF error: %s", e.description)
+    if is_ajax_request():
+        return jsonify({"message": "CSRF token missing or invalid."}), 400
+    flash("Security check failed. Please refresh and try again.", "error")
+    return redirect(request.referrer or url_for("index"))
 
 # -------------------------
 # DB & Login
@@ -44,17 +69,14 @@ login_manager.login_view = "login"
 finance_cache = {}  # user_id -> {"income": float, "expense": float, "timestamp": float}
 CACHE_EXPIRATION = 30  # seconds
 
-
 def _reset_finance_cache_for_user(user_id: int) -> None:
     finance_cache[user_id] = {"income": 0.0, "expense": 0.0, "timestamp": 0.0}
-
 
 # -------------------------
 # Helpers / Validators
 # -------------------------
 class ValidationError(Exception):
     pass
-
 
 def validate_amount(amount_str: str) -> float:
     try:
@@ -64,12 +86,6 @@ def validate_amount(amount_str: str) -> float:
         return amount
     except ValueError:
         raise ValidationError("Invalid amount format.")
-
-
-def is_ajax_request() -> bool:
-    # Your transactions.js sets this header explicitly for fetch()
-    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
 
 # -------------------------
 # Models
@@ -89,12 +105,10 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f"<User {self.username}>"
 
-
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -104,7 +118,6 @@ class Transaction(db.Model):
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-
 # -------------------------
 # Load User
 # -------------------------
@@ -112,14 +125,13 @@ class Transaction(db.Model):
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-
 # -------------------------
 # Routes
 # -------------------------
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
-    # Notes add (form POST)
+    # Notes add (POST)
     if request.method == "POST":
         note_content = request.form.get("note", "")
         if note_content.strip():
@@ -151,14 +163,8 @@ def index():
 
     balance = income - expense
 
-    # legacy placeholders (safe if your template expects them; remove later if unused)
-    labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-    values = [12, 19, 10, 24, 18]
-
     return render_template(
         "index.html",
-        labels=labels,
-        values=values,
         notes=notes,
         transactions=transactions,
         income=income,
@@ -166,7 +172,9 @@ def index():
         balance=balance,
     )
 
-
+# -------------------------
+# Auth
+# -------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -198,7 +206,6 @@ def register():
 
     return render_template("register.html")
 
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -215,13 +222,11 @@ def login():
 
     return render_template("login.html")
 
-
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     return redirect(url_for("login"))
-
 
 # -------------------------
 # Notes routes
@@ -247,7 +252,6 @@ def delete_note(note_id):
 
     return redirect(url_for("index"))
 
-
 @app.route("/undo_delete")
 @login_required
 def undo_delete():
@@ -267,28 +271,26 @@ def undo_delete():
 
     return redirect(url_for("index"))
 
-
 @app.route("/update_note/<int:note_id>", methods=["POST"])
 @login_required
 def update_note(note_id):
     note = Note.query.get_or_404(note_id)
     if note.user_id != current_user.id:
-        return jsonify({"error": "Unauthorized"}), 403
+        return jsonify({"message": "Unauthorized"}), 403
 
-    data = request.get_json()
-    if not data or not data.get("content"):
-        return jsonify({"error": "Empty content"}), 400
+    data = request.get_json(silent=True) or {}
+    content = (data.get("content") or "").strip()
+    if not content:
+        return jsonify({"message": "Empty content"}), 400
 
-    note.content = data["content"].strip()
-
+    note.content = content
     try:
         db.session.commit()
-        return jsonify({"success": True})
+        return jsonify({"message": "Note updated"})
     except Exception as e:
         db.session.rollback()
         logging.error("Error updating note: %s", e, exc_info=True)
-        return jsonify({"error": "Database error"}), 500
-
+        return jsonify({"message": "Database error"}), 500
 
 # -------------------------
 # Transactions routes
@@ -335,7 +337,6 @@ def add_transaction():
         db.session.commit()
         _reset_finance_cache_for_user(current_user.id)
 
-        # AJAX add: return only the <li> row partial
         if is_ajax_request():
             return render_template("partials/transaction_row.html", tx=new_tx)
 
@@ -353,7 +354,6 @@ def add_transaction():
         flash(msg, "error")
         return redirect(url_for("index"))
 
-
 @app.route("/update_transaction/<int:transaction_id>", methods=["POST"])
 @login_required
 def update_transaction(transaction_id):
@@ -361,10 +361,7 @@ def update_transaction(transaction_id):
     if tx.user_id != current_user.id:
         return jsonify({"message": "Unauthorized"}), 403
 
-    data = request.get_json()
-    if not data:
-        return jsonify({"message": "Invalid data"}), 400
-
+    data = request.get_json(silent=True) or {}
     desc = (data.get("description") or tx.description).strip()
     t_type = data.get("type") or tx.type
 
@@ -391,7 +388,6 @@ def update_transaction(transaction_id):
         logging.error("Error updating transaction: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
-
 @app.route("/delete_transaction/<int:transaction_id>", methods=["POST"])
 @login_required
 def delete_transaction(transaction_id):
@@ -402,8 +398,6 @@ def delete_transaction(transaction_id):
         flash("Unauthorized", "error")
         return redirect(url_for("index"))
 
-    # Store last deleted tx in session for undo (per-user)
-    # Keep it small + safe (primitives only).
     session["last_deleted_tx"] = {
         "user_id": tx.user_id,
         "description": tx.description,
@@ -437,7 +431,6 @@ def delete_transaction(transaction_id):
         flash("Error deleting transaction", "error")
         return redirect(url_for("index"))
 
-
 @app.route("/undo_delete_transaction", methods=["POST"])
 @login_required
 def undo_delete_transaction():
@@ -446,7 +439,6 @@ def undo_delete_transaction():
     if not data or data.get("user_id") != current_user.id:
         return jsonify({"message": "Nothing to undo."}), 400
 
-    # Keep undo window tight (matches your toast UX vibe)
     deleted_at = float(data.get("deleted_at", 0))
     UNDO_WINDOW_SECONDS = 10
     if time.time() - deleted_at > UNDO_WINDOW_SECONDS:
@@ -454,7 +446,6 @@ def undo_delete_transaction():
         return jsonify({"message": "Undo window expired."}), 400
 
     try:
-        # Restore timestamp if it parses
         ts = None
         try:
             ts = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
@@ -473,10 +464,8 @@ def undo_delete_transaction():
         db.session.commit()
         _reset_finance_cache_for_user(current_user.id)
 
-        # Clear after success
         session.pop("last_deleted_tx", None)
 
-        # ✅ Return row HTML so frontend can reinsert instantly
         row_html = render_template("partials/transaction_row.html", tx=restored)
         return jsonify({"message": "Transaction restored.", "row_html": row_html})
 
@@ -484,7 +473,6 @@ def undo_delete_transaction():
         db.session.rollback()
         logging.error("Error undoing delete: %s", e, exc_info=True)
         return jsonify({"message": "Error restoring transaction"}), 500
-
 
 # -------------------------
 # Finance API
@@ -521,14 +509,12 @@ def finance_totals():
         "balance": round(balance, 2),
     })
 
-
 # -------------------------
 # Offline page (PWA)
 # -------------------------
 @app.route("/offline.html")
 def offline_page():
     return render_template("offline.html")
-
 
 # -------------------------
 # Security headers
@@ -537,10 +523,8 @@ def offline_page():
 def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    # NOTE: X-XSS-Protection is legacy, but harmless. Keep it for now.
     response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
-
 
 # -------------------------
 # Error handlers
@@ -550,16 +534,11 @@ def page_not_found(e):
     logging.warning("404 error: %s at %s", e, request.path)
     return render_template("404.html"), 404
 
-
 @app.errorhandler(500)
 def internal_error(e):
     logging.error("500 error: %s at %s", e, request.path, exc_info=True)
     db.session.rollback()
     return render_template("500.html"), 500
 
-
-# -------------------------
-# Run
-# -------------------------
 if __name__ == "__main__":
     app.run(debug=True)

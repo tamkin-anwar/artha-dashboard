@@ -16,7 +16,9 @@
         {% endwith %}
 
         <form method="POST" class="space-y-4" role="form">
-            <!-- Removed CSRF token line -->
+            <!-- CSRF token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <label for="first_name" class="sr-only">First Name</label>
             <input 
                 id="first_name"
@@ -28,6 +30,7 @@
                 autofocus
                 class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
             />
+
             <label for="username" class="sr-only">Username</label>
             <input 
                 id="username"
@@ -38,6 +41,7 @@
                 autocomplete="username"
                 class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
             />
+
             <label for="password" class="sr-only">Password</label>
             <input 
                 id="password"
@@ -48,6 +52,7 @@
                 autocomplete="new-password"
                 class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
             />
+
             <button 
                 type="submit" 
                 class="w-full p-2 rounded bg-green-600 text-white hover:bg-green-700"
