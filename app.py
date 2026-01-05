@@ -24,9 +24,23 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 os.makedirs(os.path.join(basedir, "instance"), exist_ok=True)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "kewpew")
+
+# SECRET KEY
+# In production: set SECRET_KEY as an environment variable.
+# Dev fallback is intentionally obvious.
+secret = os.environ.get("SECRET_KEY")
+if not secret:
+    secret = "dev-only-change-me"
+app.config["SECRET_KEY"] = secret
+
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'instance', 'site.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Session cookie hardening (safe defaults)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Only force Secure cookies in production (https)
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 
 # CSRF settings
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
@@ -510,20 +524,17 @@ def finance_totals():
     })
 
 # -------------------------
-# Offline page (PWA)
-# -------------------------
-@app.route("/offline.html")
-def offline_page():
-    return render_template("offline.html")
-
-# -------------------------
 # Security headers
 # -------------------------
 @app.after_request
 def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+
+    # Modern, low-risk security headers
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+
     return response
 
 # -------------------------
