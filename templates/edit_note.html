@@ -17,6 +17,9 @@
         {% endwith %}
 
         <form method="POST" class="space-y-4" role="form">
+            <!-- CSRF token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <label for="note-content" class="sr-only">Note Content</label>
             <textarea 
                 id="note-content"
@@ -26,11 +29,17 @@
                 required 
                 autofocus
                 aria-label="Edit note content">{{ note.content }}</textarea>
+
             <button 
                 type="submit" 
                 class="w-full p-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-            >Save Changes</button>
-            <a href="{{ url_for('index') }}" class="block text-center text-sm text-gray-600 hover:underline">Cancel</a>
+            >
+                Save Changes
+            </button>
+
+            <a href="{{ url_for('index') }}" class="block text-center text-sm text-gray-600 hover:underline">
+                Cancel
+            </a>
         </form>
     </div>
 </main>
