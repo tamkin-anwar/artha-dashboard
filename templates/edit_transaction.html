@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Edit Transaction{% endblock %}
+{% block content %}
+<div class="p-6 max-w-xl mx-auto">
+    <h1 class="text-xl font-bold mb-4">✏️ Edit Transaction</h1>
+
+    <form method="POST" class="space-y-4" role="form">
+        <label for="description" class="sr-only">Description</label>
+        <input type="text" id="description" name="description" value="{{ transaction.description }}" required
+            class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+            placeholder="Transaction description" autofocus aria-label="Transaction description" />
+        
+        <label for="amount" class="sr-only">Amount</label>
+        <input type="number" id="amount" name="amount" value="{{ '%.2f'|format(transaction.amount) }}" step="0.01" required
+            class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+            placeholder="Amount" aria-label="Transaction amount" />
+
+        <label for="type" class="sr-only">Transaction Type</label>
+        <select id="type" name="type" class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" aria-label="Transaction type">
+            <option value="income" {% if transaction.type == 'income' %}selected{% endif %}>Income</option>
+            <option value="expense" {% if transaction.type == 'expense' %}selected{% endif %}>Expense</option>
+        </select>
+
+        <div class="flex space-x-2">
+            <button type="submit" class="flex-1 p-2 bg-blue-600 text-white rounded hover:bg-blue-700">Update</button>
+            <a href="{{ url_for('index') }}" class="flex-1 p-2 text-center border rounded hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

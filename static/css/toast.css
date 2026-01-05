@@ -1,0 +1,147 @@
+/* Toast container for stacking multiple toasts */
+.toast-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 9999; /* Ensure toasts appear above most content */
+}
+
+/* Responsive repositioning for small screens */
+@media (max-width: 640px) {
+    .toast-container {
+        bottom: auto;
+        top: 1rem;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: auto;
+        max-width: 90vw;
+        align-items: center;
+    }
+}
+
+/* Individual toast */
+.toast {
+    background: var(--toast-bg, #2d3748); /* use CSS variable with fallback */
+    color: var(--toast-text-color, #fff);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    font-size: 0.875rem;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s; /* smoother with delay */
+    pointer-events: auto;
+}
+
+/* Visible state triggered by JS */
+.toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: 0s; /* no delay when becoming visible */
+}
+
+/* Variants for success and error */
+.toast-success {
+    background: var(--toast-success-bg, #10b981); /* emerald green */
+}
+
+.toast-error {
+    background: var(--toast-error-bg, #ef4444); /* red */
+}
+
+/* Exit animation */
+.toast.exit {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Close button styling */
+.toast .close-btn {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    outline-offset: 2px;
+}
+
+/* Show visible outline for keyboard focus */
+.toast .close-btn:focus {
+    outline: 2px solid var(--toast-text-color, #fff);
+    outline-offset: 2px;
+}
+
+/* Hover style for close button */
+.toast .close-btn:hover {
+    opacity: 1;
+}
+
+/* Optional spinner inside toast */
+.toast .spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--toast-text-color, #fff);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+/* Spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Define theme variables for light and dark modes */
+:root {
+    --toast-bg: #2d3748;
+    --toast-text-color: #fff;
+    --toast-success-bg: #10b981;
+    --toast-error-bg: #ef4444;
+    --text-primary: #1f2937; /* dark slate for light theme */
+}
+
+.dark {
+    --toast-bg: #1a202c;
+    --toast-text-color: #f7fafc;
+    --toast-success-bg: #059669;
+    --toast-error-bg: #dc2626;
+    --text-primary: #f3f4f6; /* light gray for dark theme */
+}
+
+.chart-text {
+    color: var(--text-primary);
+}
+
+/* Action button inside toast (Undo, Retry, etc.) */
+.toast-action-btn {
+    margin-left: 10px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.08);
+    color: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    }
+
+    .toast-action-btn:hover {
+    background: rgba(255,255,255,0.14);
+    }
+
+    .toast-action-btn:focus {
+    outline: none;
+}

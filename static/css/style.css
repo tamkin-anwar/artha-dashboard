@@ -1,0 +1,101 @@
+:root {
+    /* Light mode colors */
+    --bg-color: #ffffff;
+    --text-color: #1f2937; /* gray-800 */
+    --income-color: #22c55e; /* green-500 */
+    --expense-color: #ef4444; /* red-500 */
+    --balance-color: #2563eb; /* blue-600 */
+    --legend-color: #1f2937;
+}
+
+.dark {
+    /* Dark mode colors */
+    --bg-color: #1f2937; /* gray-800 */
+    --text-color: #f3f4f6; /* gray-100 */
+    --income-color: #22c55e; /* green-500 */
+    --expense-color: #ef4444; /* red-500 */
+    --balance-color: #3b82f6; /* blue-500 */
+    --legend-color: #f3f4f6;
+}
+
+/* Apply the variables globally */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Finance tab container wrapper */
+.finance-tab {
+    color: var(--text-color);
+    transition: color 0.3s ease;
+}
+
+/* Summary numbers at bottom */
+.finance-income {
+    color: var(--income-color) !important;
+    transition: color 0.3s ease;
+}
+
+.finance-expense {
+    color: var(--expense-color) !important;
+    transition: color 0.3s ease;
+}
+
+.finance-balance {
+    color: var(--balance-color) !important;
+    transition: color 0.3s ease;
+}
+
+/* Transaction amount coloring based on type dynamically */
+.finance-tab .tx-amount[data-type="income"] {
+    color: var(--income-color) !important;
+    transition: color 0.3s ease;
+}
+
+.finance-tab .tx-amount[data-type="expense"] {
+    color: var(--expense-color) !important;
+    transition: color 0.3s ease;
+}
+
+/* Legend and labels in charts and finance text */
+.text-legend {
+    color: var(--legend-color);
+    transition: color 0.3s ease;
+}
+
+/* Editable transaction text and inputs */
+.finance-tab .tx-desc,
+.finance-tab .tx-amount,
+.finance-tab .tx-type {
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Inputs, selects, textareas adapt colors */
+.finance-tab input,
+.finance-tab select,
+.finance-tab textarea {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--legend-color);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Placeholder text color adapts too */
+.finance-tab input::placeholder,
+.finance-tab textarea::placeholder,
+.finance-tab select::placeholder {
+    color: var(--legend-color);
+    transition: color 0.3s ease;
+}
+
+/* Focus outline styling */
+.finance-tab input:focus,
+.finance-tab select:focus,
+.finance-tab textarea:focus,
+.finance-tab .editable-note:focus,
+.finance-tab .tx-desc:focus,
+.finance-tab .tx-amount:focus {
+    outline: 2px solid var(--balance-color);
+    outline-offset: 2px;
+}

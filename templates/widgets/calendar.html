@@ -1,0 +1,78 @@
+<div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
+    <h2 class="text-lg font-semibold mb-4">📅 Calendar</h2>
+    <div id="calendar" class="text-sm bg-white dark:bg-gray-800 rounded overflow-hidden border dark:border-gray-600" role="grid" aria-label="Calendar">
+        <div class="flex justify-between items-center px-4 py-2 bg-gray-200 dark:bg-gray-700">
+        <button id="prevMonth" class="text-lg font-bold" aria-label="Previous Month">&lt;</button>
+        <div id="monthYear" class="text-lg font-semibold" aria-live="polite" aria-atomic="true"></div>
+        <button id="nextMonth" class="text-lg font-bold" aria-label="Next Month">&gt;</button>
+        </div>
+        <div class="grid grid-cols-7 text-center text-gray-700 dark:text-gray-300 font-semibold border-t border-gray-300 dark:border-gray-600">
+        <div role="columnheader">Sun</div>
+        <div role="columnheader">Mon</div>
+        <div role="columnheader">Tue</div>
+        <div role="columnheader">Wed</div>
+        <div role="columnheader">Thu</div>
+        <div role="columnheader">Fri</div>
+        <div role="columnheader">Sat</div>
+        </div>
+        <div id="calendar-days" class="grid grid-cols-7 text-center text-gray-900 dark:text-white" role="rowgroup"></div>
+    </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    const daysContainer = document.getElementById("calendar-days");
+    const monthYear = document.getElementById("monthYear");
+    const prevBtn = document.getElementById("prevMonth");
+    const nextBtn = document.getElementById("nextMonth");
+
+    let currentDate = new Date();
+
+    function renderCalendar(date) {
+        daysContainer.innerHTML = "";
+        const year = date.getFullYear();
+        const month = date.getMonth();
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+
+        const monthName = date.toLocaleString("default", { month: "long" });
+        monthYear.textContent = `${monthName} ${year}`;
+
+        // Empty cells for alignment
+        for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.setAttribute("role", "presentation");
+        daysContainer.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= lastDate; day++) {
+        const dayCell = document.createElement("div");
+        dayCell.textContent = day;
+        dayCell.setAttribute("role", "gridcell");
+        dayCell.className = "py-2";
+
+        const today = new Date();
+        const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+        if (isToday) {
+            dayCell.classList.add("bg-blue-600", "text-white", "rounded-full");
+            dayCell.setAttribute("aria-current", "date");
+        }
+        daysContainer.appendChild(dayCell);
+        }
+    }
+
+    prevBtn.addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar(currentDate);
+    });
+
+    nextBtn.addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar(currentDate);
+    });
+
+    renderCalendar(currentDate);
+});
+</script>

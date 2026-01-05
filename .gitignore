@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.env/
+
+# Flask / DB
+instance/
+*.db
+*.sqlite3
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/

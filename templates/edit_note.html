@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Edit Note{% endblock %}
+{% block content %}
+<main class="min-h-screen flex items-center justify-center p-6">
+    <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow max-w-md w-full">
+        <h2 class="text-lg font-semibold mb-4 text-center">✏️ Edit Note</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p class="text-sm text-center mb-2 
+                    {% if category == 'success' %}text-green-500{% elif category == 'error' %}text-red-500{% else %}text-blue-500{% endif %}">
+                    {{ message|safe }}
+                </p>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="space-y-4" role="form">
+            <label for="note-content" class="sr-only">Note Content</label>
+            <textarea 
+                id="note-content"
+                name="content" 
+                rows="5" 
+                class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+                required 
+                autofocus
+                aria-label="Edit note content">{{ note.content }}</textarea>
+            <button 
+                type="submit" 
+                class="w-full p-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+            >Save Changes</button>
+            <a href="{{ url_for('index') }}" class="block text-center text-sm text-gray-600 hover:underline">Cancel</a>
+        </form>
+    </div>
+</main>
+{% endblock %}

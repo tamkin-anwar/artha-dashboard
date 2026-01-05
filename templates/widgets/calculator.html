@@ -1,0 +1,38 @@
+<div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
+    <h2 class="text-lg font-semibold mb-4">🧮 Calculator</h2>
+
+    <!-- Display -->
+    <input type="text" id="calc-display" 
+            class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 
+                    bg-white dark:bg-gray-800 dark:text-white mb-4" 
+            placeholder="0" readonly />
+
+    <!-- Buttons Grid -->
+    <div class="grid grid-cols-4 gap-2">
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">7</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">8</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">9</button>
+        <button class="calc-btn bg-gray-300 dark:bg-gray-500 hover:bg-gray-400 dark:hover:bg-gray-400 p-2 rounded">/</button>
+
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">4</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">5</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">6</button>
+        <button class="calc-btn bg-gray-300 dark:bg-gray-500 hover:bg-gray-400 dark:hover:bg-gray-400 p-2 rounded">*</button>
+
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">1</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">2</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">3</button>
+        <button class="calc-btn bg-gray-300 dark:bg-gray-500 hover:bg-gray-400 dark:hover:bg-gray-400 p-2 rounded">-</button>
+
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">0</button>
+        <button class="calc-btn bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 p-2 rounded">.</button>
+        <button id="calc-equals" class="bg-green-400 dark:bg-green-600 hover:bg-green-500 dark:hover:bg-green-500 p-2 rounded">=</button>
+        <button class="calc-btn bg-gray-300 dark:bg-gray-500 hover:bg-gray-400 dark:hover:bg-gray-400 p-2 rounded">+</button>
+
+        <button class="calc-btn col-span-4 bg-red-400 dark:bg-red-600 hover:bg-red-500 dark:hover:bg-red-500 p-2 rounded mt-2">C</button>
+    </div>
+    
+    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+        Click buttons or use keyboard while focused on the display.
+    </p>
+</div>

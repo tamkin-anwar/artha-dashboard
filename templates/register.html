@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<main class="min-h-screen flex items-center justify-center p-6">
+    <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow max-w-sm w-full">
+        <h2 class="text-lg font-semibold mb-4 text-center">📝 Register</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div aria-live="polite" role="status">
+                    {% for category, message in messages %}
+                        <p class="text-red-500 text-sm mb-3 text-center">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="space-y-4" role="form">
+            <!-- Removed CSRF token line -->
+            <label for="first_name" class="sr-only">First Name</label>
+            <input 
+                id="first_name"
+                type="text" 
+                name="first_name" 
+                placeholder="First Name" 
+                required 
+                autocomplete="given-name"
+                autofocus
+                class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+            />
+            <label for="username" class="sr-only">Username</label>
+            <input 
+                id="username"
+                type="text" 
+                name="username" 
+                placeholder="Username" 
+                required 
+                autocomplete="username"
+                class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+            />
+            <label for="password" class="sr-only">Password</label>
+            <input 
+                id="password"
+                type="password" 
+                name="password" 
+                placeholder="Password" 
+                required 
+                autocomplete="new-password"
+                class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+            />
+            <button 
+                type="submit" 
+                class="w-full p-2 rounded bg-green-600 text-white hover:bg-green-700"
+            >
+                Register
+            </button>
+        </form>
+
+        <p class="mt-4 text-center text-sm">
+            Already have an account?
+            <a href="{{ url_for('login') }}" class="text-blue-400 hover:underline">Login here</a>
+        </p>
+    </div>
+</main>
+{% endblock %}
