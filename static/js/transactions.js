@@ -4,10 +4,11 @@ import { showToast } from "./toast.js";
 
 let ariaLiveRegion = null;
 let saveTimeout = null;
+let txSortable = null;
 
 /**
  * Read CSRF token from <meta name="csrf-token" content="...">
- * base.html must include:
+ * base.html includes:
  * <meta name="csrf-token" content="{{ csrf_token() }}">
  */
 function getCsrfToken() {
@@ -17,12 +18,9 @@ function getCsrfToken() {
 
     function csrfHeaders() {
     const token = getCsrfToken();
-
-    // If this is empty, you're almost certainly seeing cached HTML from the service worker.
     if (!token) {
         console.warn("[CSRF] Missing meta csrf-token. base.html may be cached/stale.");
     }
-
     return {
         "X-Requested-With": "XMLHttpRequest",
         "X-CSRFToken": token,
@@ -30,34 +28,26 @@ function getCsrfToken() {
     };
     }
 
-    /**
-     * Debounce wrapper for saving edits
-     */
+    /** Debounce wrapper */
     function debounceSaveTransaction(e) {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => saveTransaction(e), 300);
     }
 
-    /**
-     * Format number to $0.00
-     */
+    /** Format number to $0.00 */
     function formatMoney(value) {
     const num = Number(value);
     if (Number.isNaN(num)) return "$0.00";
     return `$${num.toFixed(2)}`;
     }
 
-    /**
-     * Keep dataset type consistent (CSS handles coloring)
-     */
+    /** Keep dataset type consistent (CSS handles coloring) */
     function applyAmountTypeDataset(amountEl, type) {
     if (!amountEl) return;
     amountEl.dataset.type = type;
     }
 
-    /**
-     * Fetch totals and update Summary UI
-     */
+    /** Fetch totals and update Summary UI */
     async function updateSummaryUI() {
     const incomeEl = document.getElementById("finance-income");
     const expenseEl = document.getElementById("finance-expense");
@@ -78,6 +68,64 @@ function getCsrfToken() {
     } catch (err) {
         console.warn("Could not update summary UI:", err);
     }
+    }
+
+    /**
+     * Persist transaction order to backend
+     */
+    async function persistTransactionOrder(listEl) {
+    const ids = Array.from(listEl.querySelectorAll('li[data-id]')).map(li => Number(li.dataset.id));
+    if (!ids.length) return;
+
+    const res = await fetch("/reorder_transactions", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+        "Content-Type": "application/json",
+        ...csrfHeaders(),
+        },
+        body: JSON.stringify({ order: ids }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const msg = data?.message || "Failed to save order";
+        showToast(msg, "error");
+        return;
+    }
+    }
+
+    /**
+     * Init Sortable for transactions only (NOT widgets)
+     */
+    function initTransactionSortable() {
+    const list = document.getElementById("tx-list");
+    if (!list) return;
+
+    // Don’t double-bind
+    if (list.dataset.sortableBound === "1") return;
+
+    if (!window.Sortable) {
+        console.warn("[TX Sortable] window.Sortable not found. Vendor script not loaded or cached wrong.");
+        return;
+    }
+
+    txSortable = new window.Sortable(list, {
+        animation: 150,
+        handle: ".tx-handle",
+        draggable: "li[data-id]",
+        onEnd: async () => {
+        try {
+            await persistTransactionOrder(list);
+            showToast("Order saved", "success");
+        } catch (e) {
+            console.warn("Persist order failed:", e);
+            showToast("Could not save order", "error");
+        }
+        },
+    });
+
+    list.dataset.sortableBound = "1";
     }
 
     /**
@@ -106,7 +154,7 @@ function getCsrfToken() {
         tempDiv.innerHTML = html;
 
         const restoredRow = tempDiv.querySelector("li[data-id]");
-        const list = document.querySelector("ul.space-y-3");
+        const list = document.getElementById("tx-list");
 
         if (restoredRow && list) {
         list.prepend(restoredRow);
@@ -120,6 +168,9 @@ function getCsrfToken() {
         const msg = data?.message || "Transaction restored.";
         showToast(msg, "success");
         if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+
+        // Save order after prepend so DB matches UI
+        await persistTransactionOrder(list);
         } else {
         showToast("Transaction restored, but UI could not render the row.", "error");
         }
@@ -187,6 +238,10 @@ function getCsrfToken() {
             showToast(msg, "info");
         }
 
+        // Save order after removal so DB matches UI
+        const list = document.getElementById("tx-list");
+        if (list) await persistTransactionOrder(list);
+
         await updateChartData();
         await updateSummaryUI();
         } catch (err) {
@@ -215,9 +270,6 @@ function getCsrfToken() {
 
     if (desc) {
         desc.addEventListener("keydown", (e) => {
-        const calcDisplay = document.getElementById("calc-display");
-        if (calcDisplay && document.activeElement === calcDisplay) return;
-
         if (e.key === "Enter") {
             e.preventDefault();
             desc.blur();
@@ -228,9 +280,6 @@ function getCsrfToken() {
 
     if (amount) {
         amount.addEventListener("keydown", (e) => {
-        const calcDisplay = document.getElementById("calc-display");
-        if (calcDisplay && document.activeElement === calcDisplay) return;
-
         if (e.key === "Enter") {
             e.preventDefault();
             amount.blur();
@@ -260,7 +309,6 @@ function getCsrfToken() {
     const descEl = row.querySelector(".tx-desc");
     const amountEl = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
-
     if (!descEl || !amountEl || !typeSelect) return;
 
     const desc = descEl.textContent.trim();
@@ -348,7 +396,6 @@ function getCsrfToken() {
         return;
         }
 
-        // Add CSRF field if missing (your template should already have it, but this makes it bulletproof)
         if (!formData.get("csrf_token") && csrfToken) {
         formData.append("csrf_token", csrfToken);
         }
@@ -373,14 +420,10 @@ function getCsrfToken() {
         tempDiv.innerHTML = html;
 
         const newRow = tempDiv.querySelector("li[data-id]");
-        if (!newRow) {
-            showToast("Transaction added but UI could not render the row", "error");
-            return;
-        }
+        const list = document.getElementById("tx-list");
 
-        const list = document.querySelector("ul.space-y-3");
-        if (!list) {
-            showToast("Transaction added but list container not found", "error");
+        if (!newRow || !list) {
+            showToast("Transaction added but UI could not render the row", "error");
             return;
         }
 
@@ -394,6 +437,9 @@ function getCsrfToken() {
 
         showToast("Transaction added!", "success");
 
+        // Save order so new row gets a proper position relative to UI
+        await persistTransactionOrder(list);
+
         await updateChartData();
         await updateSummaryUI();
 
@@ -406,10 +452,13 @@ function getCsrfToken() {
     }
 
     /**
-     * Apply dataset types on load for all rows
+     * Apply dataset types on load for tx rows only
      */
     function applyAllTransactionDatasets() {
-    document.querySelectorAll("li[data-id]").forEach((row) => {
+    const list = document.getElementById("tx-list");
+    if (!list) return;
+
+    list.querySelectorAll("li[data-id]").forEach((row) => {
         const typeSelect = row.querySelector(".tx-type");
         const amountEl = row.querySelector(".tx-amount");
         if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
@@ -417,7 +466,9 @@ function getCsrfToken() {
     }
 
     function initTransactions() {
-    // Create aria live region safely (after body exists)
+    const list = document.getElementById("tx-list");
+    if (!list) return; // not on this page
+
     if (!ariaLiveRegion) {
         ariaLiveRegion = document.createElement("div");
         ariaLiveRegion.setAttribute("aria-live", "assertive");
@@ -425,16 +476,17 @@ function getCsrfToken() {
         document.body.appendChild(ariaLiveRegion);
     }
 
-    document.querySelectorAll("li[data-id]").forEach((row) => attachRowListeners(row));
+    // Only bind to finance transactions rows
+    list.querySelectorAll("li[data-id]").forEach((row) => attachRowListeners(row));
     applyAllTransactionDatasets();
 
     const addTransactionForm = document.querySelector('form[action*="add_transaction"]');
     if (addTransactionForm) handleAddTransactionForm(addTransactionForm);
 
+    initTransactionSortable();
     updateSummaryUI();
     }
 
-    // Bind reliably even if DOMContentLoaded already fired
     if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initTransactions);
     } else {

@@ -7,60 +7,60 @@
             class="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-2"
             autocomplete="off">
 
-            <!-- CSRF -->
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- CSRF -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <input type="text"
-                name="description"
-                placeholder="Description"
+        <input type="text"
+            name="description"
+            placeholder="Description"
+            required
+            class="col-span-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+
+        <div class="relative col-span-1">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">$</span>
+        <input type="number"
+                name="amount"
+                placeholder="Amount"
+                step="0.01"
+                inputmode="decimal"
                 required
-                class="col-span-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
-
-            <div class="relative col-span-1">
-                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">$</span>
-                <input type="number"
-                    name="amount"
-                    placeholder="Amount"
-                    step="0.01"
-                    inputmode="decimal"
-                    required
-                    class="pl-7 pr-3 py-2 w-full rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400" />
+                class="pl-7 pr-3 py-2 w-full rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400" />
         </div>
 
         <select name="type"
                 required
                 class="col-span-1 min-w-[100px] px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-black dark:text-white">
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
         </select>
 
         <button type="submit"
                 class="col-span-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-            Add
+        Add
         </button>
     </form>
 
     <!-- Transactions List -->
-    <ul class="space-y-3">
+    <ul id="tx-list" class="space-y-3">
         {% for tx in transactions %}
-            {% include "partials/transaction_row.html" %}
+        {% include "partials/transaction_row.html" %}
         {% else %}
-            <li class="text-sm text-gray-500 dark:text-gray-300 text-center py-6">
-                No transactions yet.
-            </li>
+        <li class="text-sm text-gray-500 dark:text-gray-300 text-center py-6">
+            No transactions yet.
+        </li>
         {% endfor %}
     </ul>
 
     <!-- Summary -->
     <div class="mt-4 text-sm chart-text text-legend">
         <p>💰 Income:
-            <strong id="finance-income" class="finance-income">${{ "%.2f"|format(income) }}</strong>
+        <strong id="finance-income" class="finance-income">${{ "%.2f"|format(income) }}</strong>
         </p>
         <p>💸 Expense:
-            <strong id="finance-expense" class="finance-expense">${{ "%.2f"|format(expense) }}</strong>
+        <strong id="finance-expense" class="finance-expense">${{ "%.2f"|format(expense) }}</strong>
         </p>
         <p>📊 Balance:
-            <strong id="finance-balance" class="finance-balance">${{ "%.2f"|format(balance) }}</strong>
+        <strong id="finance-balance" class="finance-balance">${{ "%.2f"|format(balance) }}</strong>
         </p>
     </div>
 </div>

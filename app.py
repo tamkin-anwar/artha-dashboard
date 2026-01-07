@@ -125,11 +125,18 @@ class Note(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
 class Transaction(db.Model):
+    # IMPORTANT: match your existing SQLite table name (and avoid reserved word surprises)
+    __tablename__ = "transaction"
+
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     type = db.Column(db.String(10), nullable=False)  # 'income' or 'expense'
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # NEW: persisted order (you already added/backfilled this in SQLite)
+    position = db.Column(db.Integer, nullable=False, default=0, index=True)
+
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
 # -------------------------
@@ -161,9 +168,11 @@ def index():
         return redirect(url_for("index"))
 
     notes = Note.query.filter_by(user_id=current_user.id).all()
+
+    # IMPORTANT: order by persisted position (then id as a stable tiebreaker)
     transactions = (
         Transaction.query.filter_by(user_id=current_user.id)
-        .order_by(Transaction.timestamp.desc())
+        .order_by(Transaction.position.asc(), Transaction.id.asc())
         .all()
     )
 
@@ -339,11 +348,17 @@ def add_transaction():
         flash(msg, "error")
         return redirect(url_for("index"))
 
+    # NEW: append to bottom by assigning max(position)+1
+    max_pos = db.session.query(func.max(Transaction.position)).filter_by(
+        user_id=current_user.id
+    ).scalar() or 0
+
     new_tx = Transaction(
         description=description,
         amount=amount,
         type=t_type,
         user_id=current_user.id,
+        position=int(max_pos) + 1,
     )
 
     try:
@@ -402,6 +417,46 @@ def update_transaction(transaction_id):
         logging.error("Error updating transaction: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
+@app.route("/reorder_transactions", methods=["POST"])
+@login_required
+def reorder_transactions():
+    data = request.get_json(silent=True) or {}
+    order = data.get("order")
+
+    if not isinstance(order, list) or not order:
+        return jsonify({"message": "Invalid order payload."}), 400
+
+    # sanitize ids
+    try:
+        ids = [int(x) for x in order]
+    except Exception:
+        return jsonify({"message": "Order must be a list of integers."}), 400
+
+    # Fetch only the user's transactions in this list
+    txs = Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        Transaction.id.in_(ids)
+    ).all()
+
+    # Ensure every id belongs to the user
+    found_ids = {t.id for t in txs}
+    if set(ids) != found_ids:
+        return jsonify({"message": "Order contains unknown/unauthorized transaction ids."}), 403
+
+    # Apply new positions (1..n)
+    id_to_tx = {t.id: t for t in txs}
+    for idx, tx_id in enumerate(ids, start=1):
+        id_to_tx[tx_id].position = idx
+
+    try:
+        db.session.commit()
+        _reset_finance_cache_for_user(current_user.id)
+        return jsonify({"message": "Transaction order saved."})
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Error saving transaction order: %s", e, exc_info=True)
+        return jsonify({"message": "Database error"}), 500
+
 @app.route("/delete_transaction/<int:transaction_id>", methods=["POST"])
 @login_required
 def delete_transaction(transaction_id):
@@ -417,6 +472,7 @@ def delete_transaction(transaction_id):
         "description": tx.description,
         "amount": float(tx.amount),
         "type": tx.type,
+        "position": int(tx.position or 0),
         "timestamp": (
             tx.timestamp.replace(tzinfo=timezone.utc).isoformat()
             if tx.timestamp else datetime.now(timezone.utc).isoformat()
@@ -466,11 +522,29 @@ def undo_delete_transaction():
         except Exception:
             ts = None
 
+        restored_pos = int(data.get("position") or 0)
+        if restored_pos <= 0:
+            # fallback to append
+            max_pos = db.session.query(func.max(Transaction.position)).filter_by(
+                user_id=current_user.id
+            ).scalar() or 0
+            restored_pos = int(max_pos) + 1
+        else:
+            # shift down existing rows at/after this position to make room
+            Transaction.query.filter(
+                Transaction.user_id == current_user.id,
+                Transaction.position >= restored_pos
+            ).update(
+                {Transaction.position: Transaction.position + 1},
+                synchronize_session=False
+            )
+
         restored = Transaction(
             description=data["description"],
             amount=float(data["amount"]),
             type=data["type"],
             user_id=current_user.id,
+            position=restored_pos,
             timestamp=ts if ts else db.func.current_timestamp(),
         )
 
