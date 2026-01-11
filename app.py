@@ -4,14 +4,23 @@ import time
 from datetime import datetime, timezone
 
 from flask import (
-    Flask, render_template, redirect, url_for,
-    request, flash, session, jsonify
+    Flask,
+    render_template,
+    redirect,
+    url_for,
+    request,
+    flash,
+    session,
+    jsonify,
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
-    LoginManager, UserMixin,
-    login_user, logout_user,
-    login_required, current_user
+    LoginManager,
+    UserMixin,
+    login_user,
+    logout_user,
+    login_required,
+    current_user,
 )
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -40,12 +49,18 @@ logging.basicConfig(level=logging.INFO)
 
 csrf = CSRFProtect(app)
 
+
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf)
 
+
 def is_ajax_request() -> bool:
-    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    xrw = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    accept_json = "application/json" in (request.headers.get("Accept") or "")
+    fetch_mode = request.headers.get("Sec-Fetch-Mode") == "cors"
+    return xrw or accept_json or fetch_mode or request.path.startswith("/api/")
+
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -54,6 +69,7 @@ def handle_csrf_error(e):
         return jsonify({"message": "CSRF token missing or invalid."}), 400
     flash("Security check failed. Please refresh and try again.", "error")
     return redirect(request.referrer or url_for("index"))
+
 
 db = SQLAlchemy(app)
 
@@ -64,11 +80,14 @@ login_manager.login_view = "login"
 finance_cache = {}
 CACHE_EXPIRATION = 30
 
+
 def _reset_finance_cache_for_user(user_id: int) -> None:
     finance_cache[user_id] = {"income": 0.0, "expense": 0.0, "timestamp": 0.0}
 
+
 class ValidationError(Exception):
     pass
+
 
 def validate_amount(amount_str: str) -> float:
     try:
@@ -78,6 +97,7 @@ def validate_amount(amount_str: str) -> float:
         return amount
     except ValueError:
         raise ValidationError("Invalid amount format.")
+
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -94,12 +114,13 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f"<User {self.username}>"
 
+
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-
     position = db.Column(db.Integer, nullable=False, default=0, index=True)
+
 
 class Transaction(db.Model):
     __tablename__ = "transaction"
@@ -109,14 +130,14 @@ class Transaction(db.Model):
     amount = db.Column(db.Float, nullable=False)
     type = db.Column(db.String(10), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
     position = db.Column(db.Integer, nullable=False, default=0, index=True)
-
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
 
 @app.route("/", methods=["GET", "POST"])
 @login_required
@@ -124,14 +145,17 @@ def index():
     if request.method == "POST":
         note_content = request.form.get("note", "").strip()
         if note_content:
-            max_pos = db.session.query(func.max(Note.position)).filter_by(
-                user_id=current_user.id
-            ).scalar() or 0
+            max_pos = (
+                db.session.query(func.max(Note.position))
+                .filter_by(user_id=current_user.id)
+                .scalar()
+                or 0
+            )
 
             new_note = Note(
                 content=note_content,
                 user_id=current_user.id,
-                position=int(max_pos) + 1
+                position=int(max_pos) + 1,
             )
 
             try:
@@ -157,13 +181,19 @@ def index():
         .all()
     )
 
-    income = db.session.query(func.sum(Transaction.amount)).filter_by(
-        user_id=current_user.id, type="income"
-    ).scalar() or 0
+    income = (
+        db.session.query(func.sum(Transaction.amount))
+        .filter_by(user_id=current_user.id, type="income")
+        .scalar()
+        or 0
+    )
 
-    expense = db.session.query(func.sum(Transaction.amount)).filter_by(
-        user_id=current_user.id, type="expense"
-    ).scalar() or 0
+    expense = (
+        db.session.query(func.sum(Transaction.amount))
+        .filter_by(user_id=current_user.id, type="expense")
+        .scalar()
+        or 0
+    )
 
     balance = income - expense
 
@@ -175,6 +205,7 @@ def index():
         expense=expense,
         balance=balance,
     )
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -207,6 +238,7 @@ def register():
 
     return render_template("register.html")
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -223,99 +255,13 @@ def login():
 
     return render_template("login.html")
 
+
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     return redirect(url_for("login"))
 
-@app.route("/delete_note/<int:note_id>", methods=["POST"])
-@login_required
-def delete_note(note_id):
-    note = Note.query.get_or_404(note_id)
-    if note.user_id != current_user.id:
-        flash("Unauthorized action", "error")
-        return redirect(url_for("index"))
-
-    session["last_deleted_note"] = {
-        "user_id": note.user_id,
-        "content": note.content,
-        "position": int(note.position or 0),
-        "deleted_at": time.time(),
-    }
-
-    try:
-        deleted_pos = int(note.position or 0)
-
-        db.session.delete(note)
-
-        if deleted_pos > 0:
-            Note.query.filter(
-                Note.user_id == current_user.id,
-                Note.position > deleted_pos
-            ).update(
-                {Note.position: Note.position - 1},
-                synchronize_session=False
-            )
-
-        db.session.commit()
-        flash('Note deleted. <a href="/undo_delete" class="underline">Undo</a>', "info")
-    except Exception as e:
-        db.session.rollback()
-        logging.error("Error deleting note: %s", e, exc_info=True)
-        flash("Error deleting note", "error")
-
-    return redirect(url_for("index"))
-
-@app.route("/undo_delete")
-@login_required
-def undo_delete():
-    data = session.get("last_deleted_note")
-
-    if not data or data.get("user_id") != current_user.id:
-        flash("No note to restore or unauthorized.", "error")
-        return redirect(url_for("index"))
-
-    deleted_at = float(data.get("deleted_at", 0))
-    UNDO_WINDOW_SECONDS = 60
-    if time.time() - deleted_at > UNDO_WINDOW_SECONDS:
-        session.pop("last_deleted_note", None)
-        flash("Undo window expired.", "error")
-        return redirect(url_for("index"))
-
-    try:
-        restored_pos = int(data.get("position") or 0)
-        if restored_pos <= 0:
-            max_pos = db.session.query(func.max(Note.position)).filter_by(
-                user_id=current_user.id
-            ).scalar() or 0
-            restored_pos = int(max_pos) + 1
-        else:
-            Note.query.filter(
-                Note.user_id == current_user.id,
-                Note.position >= restored_pos
-            ).update(
-                {Note.position: Note.position + 1},
-                synchronize_session=False
-            )
-
-        restored = Note(
-            content=data["content"],
-            user_id=current_user.id,
-            position=restored_pos
-        )
-
-        db.session.add(restored)
-        db.session.commit()
-        session.pop("last_deleted_note", None)
-
-        flash("Note restored!", "success")
-        return redirect(url_for("index"))
-    except Exception as e:
-        db.session.rollback()
-        logging.error("Error restoring note: %s", e, exc_info=True)
-        flash("Error restoring note", "error")
-        return redirect(url_for("index"))
 
 @app.route("/update_note/<int:note_id>", methods=["POST"])
 @login_required
@@ -338,6 +284,7 @@ def update_note(note_id):
         logging.error("Error updating note: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
+
 @app.route("/reorder_notes", methods=["POST"])
 @login_required
 def reorder_notes():
@@ -352,10 +299,9 @@ def reorder_notes():
     except Exception:
         return jsonify({"message": "Order must be a list of integers."}), 400
 
-    notes = Note.query.filter(
-        Note.user_id == current_user.id,
-        Note.id.in_(ids)
-    ).all()
+    notes = (
+        Note.query.filter(Note.user_id == current_user.id, Note.id.in_(ids)).all()
+    )
 
     found_ids = {n.id for n in notes}
     if set(ids) != found_ids:
@@ -372,6 +318,97 @@ def reorder_notes():
         db.session.rollback()
         logging.error("Error saving note order: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
+
+
+@app.route("/delete_note/<int:note_id>", methods=["POST"])
+@login_required
+def delete_note(note_id):
+    note = Note.query.get_or_404(note_id)
+    if note.user_id != current_user.id:
+        if is_ajax_request():
+            return jsonify({"message": "Unauthorized"}), 403
+        flash("Unauthorized action", "error")
+        return redirect(url_for("index"))
+
+    session["last_deleted_note"] = {
+        "user_id": note.user_id,
+        "content": note.content,
+        "position": int(note.position or 0),
+        "deleted_at": time.time(),
+    }
+
+    try:
+        db.session.delete(note)
+        db.session.commit()
+
+        if is_ajax_request():
+            return jsonify({"message": "Note deleted", "can_undo": True})
+
+        flash("Note deleted.", "success")
+        return redirect(url_for("index"))
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Error deleting note: %s", e, exc_info=True)
+
+        if is_ajax_request():
+            return jsonify({"message": "Error deleting note"}), 500
+
+        flash("Error deleting note", "error")
+        return redirect(url_for("index"))
+
+
+@app.route("/undo_delete_note", methods=["POST"])
+@login_required
+def undo_delete_note():
+    data = session.get("last_deleted_note")
+
+    if not data or data.get("user_id") != current_user.id:
+        return jsonify({"message": "Nothing to undo."}), 400
+
+    deleted_at = float(data.get("deleted_at", 0))
+    undo_window_seconds = 10
+    if time.time() - deleted_at > undo_window_seconds:
+        session.pop("last_deleted_note", None)
+        return jsonify({"message": "Undo window expired."}), 400
+
+    try:
+        restored_pos = int(data.get("position") or 0)
+        if restored_pos <= 0:
+            max_pos = (
+                db.session.query(func.max(Note.position))
+                .filter_by(user_id=current_user.id)
+                .scalar()
+                or 0
+            )
+            restored_pos = int(max_pos) + 1
+        else:
+            Note.query.filter(
+                Note.user_id == current_user.id,
+                Note.position >= restored_pos,
+            ).update(
+                {Note.position: Note.position + 1},
+                synchronize_session=False,
+            )
+
+        restored = Note(
+            content=data["content"],
+            user_id=current_user.id,
+            position=restored_pos,
+        )
+
+        db.session.add(restored)
+        db.session.commit()
+        session.pop("last_deleted_note", None)
+
+        row_html = render_template("partials/note_row.html", note=restored)
+        return jsonify({"message": "Note restored.", "row_html": row_html})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Error undoing note delete: %s", e, exc_info=True)
+        return jsonify({"message": "Error restoring note"}), 500
+
 
 @app.route("/add_transaction", methods=["POST"])
 @login_required
@@ -403,9 +440,12 @@ def add_transaction():
         flash(msg, "error")
         return redirect(url_for("index"))
 
-    max_pos = db.session.query(func.max(Transaction.position)).filter_by(
-        user_id=current_user.id
-    ).scalar() or 0
+    max_pos = (
+        db.session.query(func.max(Transaction.position))
+        .filter_by(user_id=current_user.id)
+        .scalar()
+        or 0
+    )
 
     new_tx = Transaction(
         description=description,
@@ -436,6 +476,7 @@ def add_transaction():
 
         flash(msg, "error")
         return redirect(url_for("index"))
+
 
 @app.route("/update_transaction/<int:transaction_id>", methods=["POST"])
 @login_required
@@ -471,6 +512,7 @@ def update_transaction(transaction_id):
         logging.error("Error updating transaction: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
+
 @app.route("/reorder_transactions", methods=["POST"])
 @login_required
 def reorder_transactions():
@@ -487,7 +529,7 @@ def reorder_transactions():
 
     txs = Transaction.query.filter(
         Transaction.user_id == current_user.id,
-        Transaction.id.in_(ids)
+        Transaction.id.in_(ids),
     ).all()
 
     found_ids = {t.id for t in txs}
@@ -507,6 +549,7 @@ def reorder_transactions():
         logging.error("Error saving transaction order: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
+
 @app.route("/delete_transaction/<int:transaction_id>", methods=["POST"])
 @login_required
 def delete_transaction(transaction_id):
@@ -525,7 +568,8 @@ def delete_transaction(transaction_id):
         "position": int(tx.position or 0),
         "timestamp": (
             tx.timestamp.replace(tzinfo=timezone.utc).isoformat()
-            if tx.timestamp else datetime.now(timezone.utc).isoformat()
+            if tx.timestamp
+            else datetime.now(timezone.utc).isoformat()
         ),
         "deleted_at": time.time(),
     }
@@ -551,6 +595,7 @@ def delete_transaction(transaction_id):
         flash("Error deleting transaction", "error")
         return redirect(url_for("index"))
 
+
 @app.route("/undo_delete_transaction", methods=["POST"])
 @login_required
 def undo_delete_transaction():
@@ -560,8 +605,8 @@ def undo_delete_transaction():
         return jsonify({"message": "Nothing to undo."}), 400
 
     deleted_at = float(data.get("deleted_at", 0))
-    UNDO_WINDOW_SECONDS = 10
-    if time.time() - deleted_at > UNDO_WINDOW_SECONDS:
+    undo_window_seconds = 10
+    if time.time() - deleted_at > undo_window_seconds:
         session.pop("last_deleted_tx", None)
         return jsonify({"message": "Undo window expired."}), 400
 
@@ -574,17 +619,20 @@ def undo_delete_transaction():
 
         restored_pos = int(data.get("position") or 0)
         if restored_pos <= 0:
-            max_pos = db.session.query(func.max(Transaction.position)).filter_by(
-                user_id=current_user.id
-            ).scalar() or 0
+            max_pos = (
+                db.session.query(func.max(Transaction.position))
+                .filter_by(user_id=current_user.id)
+                .scalar()
+                or 0
+            )
             restored_pos = int(max_pos) + 1
         else:
             Transaction.query.filter(
                 Transaction.user_id == current_user.id,
-                Transaction.position >= restored_pos
+                Transaction.position >= restored_pos,
             ).update(
                 {Transaction.position: Transaction.position + 1},
-                synchronize_session=False
+                synchronize_session=False,
             )
 
         restored = Transaction(
@@ -610,6 +658,7 @@ def undo_delete_transaction():
         logging.error("Error undoing delete: %s", e, exc_info=True)
         return jsonify({"message": "Error restoring transaction"}), 500
 
+
 @app.route("/api/finance_totals")
 @login_required
 def finance_totals():
@@ -622,25 +671,36 @@ def finance_totals():
         cached = finance_cache[uid]
 
     if now - cached["timestamp"] > CACHE_EXPIRATION:
-        income = db.session.query(func.sum(Transaction.amount)).filter_by(
-            user_id=uid, type="income"
-        ).scalar() or 0
+        income = (
+            db.session.query(func.sum(Transaction.amount))
+            .filter_by(user_id=uid, type="income")
+            .scalar()
+            or 0
+        )
 
-        expense = db.session.query(func.sum(Transaction.amount)).filter_by(
-            user_id=uid, type="expense"
-        ).scalar() or 0
+        expense = (
+            db.session.query(func.sum(Transaction.amount))
+            .filter_by(user_id=uid, type="expense")
+            .scalar()
+            or 0
+        )
 
-        cached.update({"income": float(income), "expense": float(expense), "timestamp": now})
+        cached.update(
+            {"income": float(income), "expense": float(expense), "timestamp": now}
+        )
 
     income = float(cached["income"])
     expense = float(cached["expense"])
     balance = income - expense
 
-    return jsonify({
-        "income": round(income, 2),
-        "expense": round(expense, 2),
-        "balance": round(balance, 2),
-    })
+    return jsonify(
+        {
+            "income": round(income, 2),
+            "expense": round(expense, 2),
+            "balance": round(balance, 2),
+        }
+    )
+
 
 @app.after_request
 def add_security_headers(response):
@@ -650,16 +710,19 @@ def add_security_headers(response):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     logging.warning("404 error: %s at %s", e, request.path)
     return render_template("404.html"), 404
+
 
 @app.errorhandler(500)
 def internal_error(e):
     logging.error("500 error: %s at %s", e, request.path, exc_info=True)
     db.session.rollback()
     return render_template("500.html"), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

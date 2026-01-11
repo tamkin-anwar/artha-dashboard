@@ -1,171 +1,210 @@
 // static/js/notes.js
 import { showToast } from "./toast.js";
 
-const DEBOUNCE_DELAY = 300;
-const MAX_RETRIES = 2;
+function ajaxHeader() {
+    return { "X-Requested-With": "XMLHttpRequest" };
+    }
 
-let saveTimeout = null;
-let reorderTimeout = null;
+    function getCsrfFromElement(el) {
+    if (!el) return "";
+    const input = el.querySelector('input[name="csrf_token"]');
+    return input ? input.value : "";
+    }
 
-function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute("content") : "";
-}
+    function getAnyCsrfToken() {
+    const any = document.querySelector('input[name="csrf_token"]');
+    return any ? any.value : "";
+    }
 
-function csrfHeaders() {
-    const token = getCsrfToken();
-    return {
-        "X-Requested-With": "XMLHttpRequest",
-        "X-CSRFToken": token,
-        "X-CSRF-Token": token,
+    function buildHeaders(csrfToken, isJson) {
+    const headers = {
+        ...ajaxHeader(),
+        "X-CSRFToken": csrfToken
     };
-}
-
-function ensureSavingIndicator(editableEl) {
-    const parent = editableEl.parentElement;
-    if (!parent) return null;
-
-    let indicator = parent.querySelector(".note-saving-indicator");
-    if (!indicator) {
-        indicator = document.createElement("span");
-        indicator.className = "note-saving-indicator text-xs text-gray-500 ml-2";
-        indicator.textContent = "Saving...";
-        editableEl.insertAdjacentElement("afterend", indicator);
+    if (isJson) headers["Content-Type"] = "application/json";
+    return headers;
     }
-    return indicator;
-}
 
-async function saveNoteContent(noteId, content, editableEl, retries = 0) {
-    if (!noteId) return;
+    async function fetchMaybeJson(url, options) {
+    const res = await fetch(url, {
+        credentials: "same-origin",
+        redirect: "follow",
+        ...options
+    });
 
-    const trimmed = (content || "").trim();
-    if (!trimmed) return;
+    const contentType = res.headers.get("content-type") || "";
+    let data = {};
+    if (contentType.includes("application/json")) {
+        data = await res.json().catch(() => ({}));
+    } else {
+        data = { raw: await res.text().catch(() => "") };
+    }
 
-    const indicator = ensureSavingIndicator(editableEl);
+    return { res, data };
+    }
 
-    try {
-        const res = await fetch(`/update_note/${noteId}`, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-                "Content-Type": "application/json",
-                ...csrfHeaders(),
-            },
-            body: JSON.stringify({ content: trimmed }),
-        });
+    function initInlineEdit() {
+    const noteList = document.getElementById("note-list");
+    if (!noteList) return;
 
-        const data = await res.json().catch(() => ({}));
+    let saveTimer = null;
 
-        if (!res.ok) {
-            const msg = data?.message || "Failed to save note";
+    noteList.addEventListener("input", (e) => {
+        const el = e.target;
+        if (!(el instanceof HTMLElement)) return;
+        if (!el.classList.contains("editable-note")) return;
 
-            if (retries < MAX_RETRIES) {
-                return saveNoteContent(noteId, trimmed, editableEl, retries + 1);
-            }
+        const noteId = el.getAttribute("data-note-id");
+        if (!noteId) return;
 
-            showToast(msg, "error");
+        const row = el.closest("li.note-row");
+        if (!row) return;
+
+        const deleteForm = row.querySelector("form.note-delete-form");
+        const csrfToken = getCsrfFromElement(deleteForm) || getAnyCsrfToken();
+
+        const content = (el.textContent || "").trim();
+
+        if (saveTimer) window.clearTimeout(saveTimer);
+
+        saveTimer = window.setTimeout(async () => {
+        if (!content) {
+            showToast("Note cannot be empty", "error");
             return;
         }
 
-        showToast("Note saved", "success");
-    } catch (err) {
-        if (retries < MAX_RETRIES) {
-            return saveNoteContent(noteId, trimmed, editableEl, retries + 1);
+        try {
+            const { res, data } = await fetchMaybeJson(`/update_note/${noteId}`, {
+            method: "POST",
+            headers: buildHeaders(csrfToken, true),
+            body: JSON.stringify({ content })
+            });
+
+            if (!res.ok) {
+            showToast(data.message || "Note update failed", "error");
+            }
+        } catch {
+            showToast("Network error while saving note", "error");
         }
-        console.error("Error saving note:", err);
-        showToast("Error saving note", "error");
-    } finally {
-        if (indicator) indicator.remove();
+        }, 350);
+    });
     }
-}
 
-function bindNoteEditors() {
-    const editableNotes = document.querySelectorAll(".editable-note");
-    if (!editableNotes.length) return;
+    function initDeleteWithUndo() {
+    const noteList = document.getElementById("note-list");
+    if (!noteList) return;
 
-    editableNotes.forEach((el) => {
-        if (el.dataset.bound === "1") return;
-        el.dataset.bound = "1";
+    noteList.addEventListener("submit", async (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (!form.classList.contains("note-delete-form")) return;
 
-        el.addEventListener("blur", () => {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                saveNoteContent(el.dataset.noteId, el.textContent, el);
-            }, DEBOUNCE_DELAY);
+        e.preventDefault();
+        e.stopPropagation();
+
+        const row = form.closest("li.note-row");
+        const url = form.getAttribute("action") || "";
+        const csrfToken = getCsrfFromElement(form) || getAnyCsrfToken();
+
+        if (!row || !url) return;
+
+        const rowNext = row.nextElementSibling;
+        const rowParent = row.parentElement;
+
+        try {
+        const { res, data } = await fetchMaybeJson(url, {
+            method: "POST",
+            headers: buildHeaders(csrfToken, false)
         });
 
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                el.blur();
+        if (!res.ok) {
+            showToast(data.message || "Delete failed", "error");
+            return;
+        }
+
+        row.remove();
+
+        showToast("Note deleted", "success", 4000, {
+            actionText: "Undo",
+            onAction: async () => {
+            try {
+                const { res: undoRes, data: undoData } = await fetchMaybeJson("/undo_delete_note", {
+                method: "POST",
+                headers: buildHeaders(csrfToken, false)
+                });
+
+                if (!undoRes.ok) {
+                showToast(undoData.message || "Undo failed", "error");
+                return;
+                }
+
+                if (!undoData.row_html) {
+                showToast("Undo succeeded but no HTML returned", "error");
+                return;
+                }
+
+                if (rowParent) {
+                if (rowNext && rowNext.parentElement === rowParent) {
+                    rowNext.insertAdjacentHTML("beforebegin", undoData.row_html);
+                } else {
+                    rowParent.insertAdjacentHTML("beforeend", undoData.row_html);
+                }
+                } else {
+                noteList.insertAdjacentHTML("beforeend", undoData.row_html);
+                }
+            } catch {
+                showToast("Network error while undoing", "error");
+            }
             }
         });
+        } catch {
+        showToast("Network error while deleting note", "error");
+        }
     });
-}
+    }
 
-async function persistNoteOrder(noteListEl) {
-    const ids = Array.from(noteListEl.querySelectorAll('li[data-id]'))
-        .map((li) => parseInt(li.dataset.id, 10))
+    function initReorder() {
+    const noteList = document.getElementById("note-list");
+    if (!noteList) return;
+    if (typeof Sortable === "undefined") return;
+
+    const csrfToken =
+        getCsrfFromElement(noteList) ||
+        getCsrfFromElement(document) ||
+        getAnyCsrfToken();
+
+    const getOrder = () => {
+        return Array.from(noteList.querySelectorAll("li.note-row"))
+        .map((li) => parseInt(li.getAttribute("data-id") || "", 10))
         .filter((n) => Number.isFinite(n));
+    };
 
-    if (!ids.length) return;
-
-    try {
-        const res = await fetch("/reorder_notes", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-                "Content-Type": "application/json",
-                ...csrfHeaders(),
-            },
-            body: JSON.stringify({ order: ids }),
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-            const msg = data?.message || "Failed to save note order";
-            showToast(msg, "error");
-            return;
-        }
-
-        showToast("Note order saved", "success");
-    } catch (err) {
-        console.error("Error saving note order:", err);
-        showToast("Network error while saving note order", "error");
-    }
-}
-
-function initNoteSorting() {
-    const noteListEl = document.getElementById("note-list");
-    if (!noteListEl) return;
-
-    if (noteListEl.dataset.sortableBound === "1") return;
-    noteListEl.dataset.sortableBound = "1";
-
-    if (!window.Sortable) {
-        console.warn("Sortable missing. sortable.min.js may not be loading.");
-        return;
-    }
-
-    window.Sortable.create(noteListEl, {
+    new Sortable(noteList, {
         animation: 150,
-        draggable: 'li[data-id]',
         handle: ".note-handle",
-        onEnd: () => {
-            clearTimeout(reorderTimeout);
-            reorderTimeout = setTimeout(() => persistNoteOrder(noteListEl), 250);
-        },
+        onEnd: async () => {
+        const order = getOrder();
+        if (!order.length) return;
+
+        try {
+            const { res, data } = await fetchMaybeJson("/reorder_notes", {
+            method: "POST",
+            headers: buildHeaders(csrfToken, true),
+            body: JSON.stringify({ order })
+            });
+
+            if (!res.ok) {
+            showToast(data.message || "Reorder failed", "error");
+            }
+        } catch {
+            showToast("Network error while saving order", "error");
+        }
+        }
     });
-}
+    }
 
-function initNotes() {
-    bindNoteEditors();
-    initNoteSorting();
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initNotes);
-} else {
-    initNotes();
-}
+    document.addEventListener("DOMContentLoaded", () => {
+    initInlineEdit();
+    initDeleteWithUndo();
+    initReorder();
+});
