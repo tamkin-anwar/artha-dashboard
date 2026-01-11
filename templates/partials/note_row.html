@@ -1,0 +1,32 @@
+<li
+    data-id="{{ note.id }}"
+    class="note-row bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-600 flex items-center space-x-2"
+    >
+    <button
+        type="button"
+        class="note-handle text-gray-400 hover:text-gray-200 cursor-grab active:cursor-grabbing px-1"
+        aria-label="Drag note"
+        title="Drag"
+    >≡</button>
+
+    <div
+        contenteditable="true"
+        data-note-id="{{ note.id }}"
+        role="textbox"
+        aria-multiline="true"
+        tabindex="0"
+        aria-label="Edit note"
+        spellcheck="true"
+        class="editable-note flex-grow outline-none hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
+    >{{ note.content }}</div>
+
+    <form action="{{ url_for('delete_note', note_id=note.id) }}" method="POST" class="note-delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button
+        type="submit"
+        class="text-red-500 hover:text-red-700 text-xl leading-none"
+        title="Delete"
+        aria-label="Delete note"
+        >🗑️</button>
+    </form>
+</li>
