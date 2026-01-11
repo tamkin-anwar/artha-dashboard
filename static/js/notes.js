@@ -1,18 +1,28 @@
+// static/js/notes.js
 import { showToast } from "./toast.js";
 
 const DEBOUNCE_DELAY = 300;
 const MAX_RETRIES = 2;
-let debounceTimeout;
 
-// Read CSRF from <meta name="csrf-token" content="..."> (we added this in base.html)
+let saveTimeout = null;
+let reorderTimeout = null;
+
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute("content") : "";
-    }
+}
 
-    // Create a small "Saving..." indicator *next to* the editable note (not inside it)
-    function ensureSavingIndicator(el) {
-    const parent = el.parentElement;
+function csrfHeaders() {
+    const token = getCsrfToken();
+    return {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": token,
+        "X-CSRF-Token": token,
+    };
+}
+
+function ensureSavingIndicator(editableEl) {
+    const parent = editableEl.parentElement;
     if (!parent) return null;
 
     let indicator = parent.querySelector(".note-saving-indicator");
@@ -20,85 +30,142 @@ function getCsrfToken() {
         indicator = document.createElement("span");
         indicator.className = "note-saving-indicator text-xs text-gray-500 ml-2";
         indicator.textContent = "Saving...";
-        // Put it right after the editable div
-        el.insertAdjacentElement("afterend", indicator);
+        editableEl.insertAdjacentElement("afterend", indicator);
     }
     return indicator;
-    }
+}
 
-    async function saveNoteContent(noteId, content, el, retries = 0) {
+async function saveNoteContent(noteId, content, editableEl, retries = 0) {
     if (!noteId) return;
 
     const trimmed = (content || "").trim();
     if (!trimmed) return;
 
-    const csrfToken = getCsrfToken();
-    const indicator = ensureSavingIndicator(el);
+    const indicator = ensureSavingIndicator(editableEl);
 
     try {
         const res = await fetch(`/update_note/${noteId}`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-            "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            // Flask-WTF checks these header names
-            "X-CSRFToken": csrfToken,
-            "X-CSRF-Token": csrfToken
-        },
-        body: JSON.stringify({ content: trimmed })
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({ content: trimmed }),
         });
 
+        const data = await res.json().catch(() => ({}));
+
         if (!res.ok) {
-        // Try to read server error message (if any)
-        let msg = "Failed to save note";
-        try {
-            const data = await res.json();
-            if (data?.error) msg = data.error;
-            if (data?.message) msg = data.message;
-        } catch (_) {}
+            const msg = data?.message || "Failed to save note";
 
-        if (retries < MAX_RETRIES) {
-            console.warn(`Retrying save for note ${noteId} (${retries + 1})`);
-            return saveNoteContent(noteId, trimmed, el, retries + 1);
+            if (retries < MAX_RETRIES) {
+                return saveNoteContent(noteId, trimmed, editableEl, retries + 1);
+            }
+
+            showToast(msg, "error");
+            return;
         }
 
-        console.error(`Failed to save note ${noteId}`, res.status);
-        showToast(msg, "error");
-        return;
-        }
-
-        // Optional success toast (keep it if you like)
-        showToast("Note saved");
+        showToast("Note saved", "success");
     } catch (err) {
         if (retries < MAX_RETRIES) {
-        console.warn(`Retrying save for note ${noteId} after error (${retries + 1})`, err);
-        return saveNoteContent(noteId, trimmed, el, retries + 1);
+            return saveNoteContent(noteId, trimmed, editableEl, retries + 1);
         }
         console.error("Error saving note:", err);
         showToast("Error saving note", "error");
     } finally {
         if (indicator) indicator.remove();
     }
-    }
+}
 
-    document.addEventListener("DOMContentLoaded", () => {
-    const notes = document.querySelectorAll(".editable-note");
-    if (!notes.length) return;
+function bindNoteEditors() {
+    const editableNotes = document.querySelectorAll(".editable-note");
+    if (!editableNotes.length) return;
 
-    notes.forEach((el) => {
+    editableNotes.forEach((el) => {
+        if (el.dataset.bound === "1") return;
+        el.dataset.bound = "1";
+
         el.addEventListener("blur", () => {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-            saveNoteContent(el.dataset.noteId, el.textContent, el);
-        }, DEBOUNCE_DELAY);
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveNoteContent(el.dataset.noteId, el.textContent, el);
+            }, DEBOUNCE_DELAY);
         });
 
         el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            el.blur();
-        }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                el.blur();
+            }
         });
     });
-});
+}
+
+async function persistNoteOrder(noteListEl) {
+    const ids = Array.from(noteListEl.querySelectorAll('li[data-id]'))
+        .map((li) => parseInt(li.dataset.id, 10))
+        .filter((n) => Number.isFinite(n));
+
+    if (!ids.length) return;
+
+    try {
+        const res = await fetch("/reorder_notes", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({ order: ids }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            const msg = data?.message || "Failed to save note order";
+            showToast(msg, "error");
+            return;
+        }
+
+        showToast("Note order saved", "success");
+    } catch (err) {
+        console.error("Error saving note order:", err);
+        showToast("Network error while saving note order", "error");
+    }
+}
+
+function initNoteSorting() {
+    const noteListEl = document.getElementById("note-list");
+    if (!noteListEl) return;
+
+    if (noteListEl.dataset.sortableBound === "1") return;
+    noteListEl.dataset.sortableBound = "1";
+
+    if (!window.Sortable) {
+        console.warn("Sortable missing. sortable.min.js may not be loading.");
+        return;
+    }
+
+    window.Sortable.create(noteListEl, {
+        animation: 150,
+        draggable: 'li[data-id]',
+        handle: ".note-handle",
+        onEnd: () => {
+            clearTimeout(reorderTimeout);
+            reorderTimeout = setTimeout(() => persistNoteOrder(noteListEl), 250);
+        },
+    });
+}
+
+function initNotes() {
+    bindNoteEditors();
+    initNoteSorting();
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initNotes);
+} else {
+    initNotes();
+}

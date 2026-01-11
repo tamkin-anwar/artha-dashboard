@@ -17,17 +17,11 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 
-# -------------------------
-# Setup
-# -------------------------
 basedir = os.path.abspath(os.path.dirname(__file__))
 os.makedirs(os.path.join(basedir, "instance"), exist_ok=True)
 
 app = Flask(__name__)
 
-# SECRET KEY
-# In production: set SECRET_KEY as an environment variable.
-# Dev fallback is intentionally obvious.
 secret = os.environ.get("SECRET_KEY")
 if not secret:
     secret = "dev-only-change-me"
@@ -36,25 +30,18 @@ app.config["SECRET_KEY"] = secret
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'instance', 'site.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Session cookie hardening (safe defaults)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-# Only force Secure cookies in production (https)
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 
-# CSRF settings
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
 
 logging.basicConfig(level=logging.INFO)
 
-# -------------------------
-# CSRF Protection
-# -------------------------
 csrf = CSRFProtect(app)
 
 @app.context_processor
 def inject_csrf_token():
-    # allows {{ csrf_token() }} in templates
     return dict(csrf_token=generate_csrf)
 
 def is_ajax_request() -> bool:
@@ -68,27 +55,18 @@ def handle_csrf_error(e):
     flash("Security check failed. Please refresh and try again.", "error")
     return redirect(request.referrer or url_for("index"))
 
-# -------------------------
-# DB & Login
-# -------------------------
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# -------------------------
-# Finance totals cache (per-user)
-# -------------------------
-finance_cache = {}  # user_id -> {"income": float, "expense": float, "timestamp": float}
-CACHE_EXPIRATION = 30  # seconds
+finance_cache = {}
+CACHE_EXPIRATION = 30
 
 def _reset_finance_cache_for_user(user_id: int) -> None:
     finance_cache[user_id] = {"income": 0.0, "expense": 0.0, "timestamp": 0.0}
 
-# -------------------------
-# Helpers / Validators
-# -------------------------
 class ValidationError(Exception):
     pass
 
@@ -101,9 +79,6 @@ def validate_amount(amount_str: str) -> float:
     except ValueError:
         raise ValidationError("Invalid amount format.")
 
-# -------------------------
-# Models
-# -------------------------
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -124,39 +99,41 @@ class Note(db.Model):
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
+    position = db.Column(db.Integer, nullable=False, default=0, index=True)
+
 class Transaction(db.Model):
-    # IMPORTANT: match your existing SQLite table name (and avoid reserved word surprises)
     __tablename__ = "transaction"
 
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    type = db.Column(db.String(10), nullable=False)  # 'income' or 'expense'
+    type = db.Column(db.String(10), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
-    # NEW: persisted order (you already added/backfilled this in SQLite)
     position = db.Column(db.Integer, nullable=False, default=0, index=True)
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-# -------------------------
-# Load User
-# -------------------------
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# -------------------------
-# Routes
-# -------------------------
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
-    # Notes add (POST)
     if request.method == "POST":
-        note_content = request.form.get("note", "")
-        if note_content.strip():
-            new_note = Note(content=note_content.strip(), user_id=current_user.id)
+        note_content = request.form.get("note", "").strip()
+        if note_content:
+            max_pos = db.session.query(func.max(Note.position)).filter_by(
+                user_id=current_user.id
+            ).scalar() or 0
+
+            new_note = Note(
+                content=note_content,
+                user_id=current_user.id,
+                position=int(max_pos) + 1
+            )
+
             try:
                 db.session.add(new_note)
                 db.session.commit()
@@ -165,11 +142,15 @@ def index():
                 db.session.rollback()
                 logging.error("Error adding note: %s", e, exc_info=True)
                 flash("Error adding note", "error")
+
         return redirect(url_for("index"))
 
-    notes = Note.query.filter_by(user_id=current_user.id).all()
+    notes = (
+        Note.query.filter_by(user_id=current_user.id)
+        .order_by(Note.position.asc(), Note.id.asc())
+        .all()
+    )
 
-    # IMPORTANT: order by persisted position (then id as a stable tiebreaker)
     transactions = (
         Transaction.query.filter_by(user_id=current_user.id)
         .order_by(Transaction.position.asc(), Transaction.id.asc())
@@ -195,9 +176,6 @@ def index():
         balance=balance,
     )
 
-# -------------------------
-# Auth
-# -------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -251,9 +229,6 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-# -------------------------
-# Notes routes
-# -------------------------
 @app.route("/delete_note/<int:note_id>", methods=["POST"])
 @login_required
 def delete_note(note_id):
@@ -262,10 +237,27 @@ def delete_note(note_id):
         flash("Unauthorized action", "error")
         return redirect(url_for("index"))
 
-    session["last_deleted_note"] = {"content": note.content, "user_id": note.user_id}
+    session["last_deleted_note"] = {
+        "user_id": note.user_id,
+        "content": note.content,
+        "position": int(note.position or 0),
+        "deleted_at": time.time(),
+    }
 
     try:
+        deleted_pos = int(note.position or 0)
+
         db.session.delete(note)
+
+        if deleted_pos > 0:
+            Note.query.filter(
+                Note.user_id == current_user.id,
+                Note.position > deleted_pos
+            ).update(
+                {Note.position: Note.position - 1},
+                synchronize_session=False
+            )
+
         db.session.commit()
         flash('Note deleted. <a href="/undo_delete" class="underline">Undo</a>', "info")
     except Exception as e:
@@ -278,21 +270,52 @@ def delete_note(note_id):
 @app.route("/undo_delete")
 @login_required
 def undo_delete():
-    note_data = session.pop("last_deleted_note", None)
-    if note_data and note_data.get("user_id") == current_user.id:
-        restored_note = Note(content=note_data["content"], user_id=note_data["user_id"])
-        try:
-            db.session.add(restored_note)
-            db.session.commit()
-            flash("Note restored!", "success")
-        except Exception as e:
-            db.session.rollback()
-            logging.error("Error restoring note: %s", e, exc_info=True)
-            flash("Error restoring note", "error")
-    else:
-        flash("No note to restore or unauthorized.", "error")
+    data = session.get("last_deleted_note")
 
-    return redirect(url_for("index"))
+    if not data or data.get("user_id") != current_user.id:
+        flash("No note to restore or unauthorized.", "error")
+        return redirect(url_for("index"))
+
+    deleted_at = float(data.get("deleted_at", 0))
+    UNDO_WINDOW_SECONDS = 60
+    if time.time() - deleted_at > UNDO_WINDOW_SECONDS:
+        session.pop("last_deleted_note", None)
+        flash("Undo window expired.", "error")
+        return redirect(url_for("index"))
+
+    try:
+        restored_pos = int(data.get("position") or 0)
+        if restored_pos <= 0:
+            max_pos = db.session.query(func.max(Note.position)).filter_by(
+                user_id=current_user.id
+            ).scalar() or 0
+            restored_pos = int(max_pos) + 1
+        else:
+            Note.query.filter(
+                Note.user_id == current_user.id,
+                Note.position >= restored_pos
+            ).update(
+                {Note.position: Note.position + 1},
+                synchronize_session=False
+            )
+
+        restored = Note(
+            content=data["content"],
+            user_id=current_user.id,
+            position=restored_pos
+        )
+
+        db.session.add(restored)
+        db.session.commit()
+        session.pop("last_deleted_note", None)
+
+        flash("Note restored!", "success")
+        return redirect(url_for("index"))
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Error restoring note: %s", e, exc_info=True)
+        flash("Error restoring note", "error")
+        return redirect(url_for("index"))
 
 @app.route("/update_note/<int:note_id>", methods=["POST"])
 @login_required
@@ -315,9 +338,41 @@ def update_note(note_id):
         logging.error("Error updating note: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
-# -------------------------
-# Transactions routes
-# -------------------------
+@app.route("/reorder_notes", methods=["POST"])
+@login_required
+def reorder_notes():
+    data = request.get_json(silent=True) or {}
+    order = data.get("order")
+
+    if not isinstance(order, list) or not order:
+        return jsonify({"message": "Invalid order payload."}), 400
+
+    try:
+        ids = [int(x) for x in order]
+    except Exception:
+        return jsonify({"message": "Order must be a list of integers."}), 400
+
+    notes = Note.query.filter(
+        Note.user_id == current_user.id,
+        Note.id.in_(ids)
+    ).all()
+
+    found_ids = {n.id for n in notes}
+    if set(ids) != found_ids:
+        return jsonify({"message": "Order contains unknown or unauthorized note ids."}), 403
+
+    id_to_note = {n.id: n for n in notes}
+    for idx, note_id in enumerate(ids, start=1):
+        id_to_note[note_id].position = idx
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Note order saved."})
+    except Exception as e:
+        db.session.rollback()
+        logging.error("Error saving note order: %s", e, exc_info=True)
+        return jsonify({"message": "Database error"}), 500
+
 @app.route("/add_transaction", methods=["POST"])
 @login_required
 def add_transaction():
@@ -348,7 +403,6 @@ def add_transaction():
         flash(msg, "error")
         return redirect(url_for("index"))
 
-    # NEW: append to bottom by assigning max(position)+1
     max_pos = db.session.query(func.max(Transaction.position)).filter_by(
         user_id=current_user.id
     ).scalar() or 0
@@ -426,24 +480,20 @@ def reorder_transactions():
     if not isinstance(order, list) or not order:
         return jsonify({"message": "Invalid order payload."}), 400
 
-    # sanitize ids
     try:
         ids = [int(x) for x in order]
     except Exception:
         return jsonify({"message": "Order must be a list of integers."}), 400
 
-    # Fetch only the user's transactions in this list
     txs = Transaction.query.filter(
         Transaction.user_id == current_user.id,
         Transaction.id.in_(ids)
     ).all()
 
-    # Ensure every id belongs to the user
     found_ids = {t.id for t in txs}
     if set(ids) != found_ids:
-        return jsonify({"message": "Order contains unknown/unauthorized transaction ids."}), 403
+        return jsonify({"message": "Order contains unknown or unauthorized transaction ids."}), 403
 
-    # Apply new positions (1..n)
     id_to_tx = {t.id: t for t in txs}
     for idx, tx_id in enumerate(ids, start=1):
         id_to_tx[tx_id].position = idx
@@ -524,13 +574,11 @@ def undo_delete_transaction():
 
         restored_pos = int(data.get("position") or 0)
         if restored_pos <= 0:
-            # fallback to append
             max_pos = db.session.query(func.max(Transaction.position)).filter_by(
                 user_id=current_user.id
             ).scalar() or 0
             restored_pos = int(max_pos) + 1
         else:
-            # shift down existing rows at/after this position to make room
             Transaction.query.filter(
                 Transaction.user_id == current_user.id,
                 Transaction.position >= restored_pos
@@ -562,9 +610,6 @@ def undo_delete_transaction():
         logging.error("Error undoing delete: %s", e, exc_info=True)
         return jsonify({"message": "Error restoring transaction"}), 500
 
-# -------------------------
-# Finance API
-# -------------------------
 @app.route("/api/finance_totals")
 @login_required
 def finance_totals():
@@ -597,23 +642,14 @@ def finance_totals():
         "balance": round(balance, 2),
     })
 
-# -------------------------
-# Security headers
-# -------------------------
 @app.after_request
 def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-
-    # Modern, low-risk security headers
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-
     return response
 
-# -------------------------
-# Error handlers
-# -------------------------
 @app.errorhandler(404)
 def page_not_found(e):
     logging.warning("404 error: %s at %s", e, request.path)

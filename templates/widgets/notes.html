@@ -1,15 +1,15 @@
+<!-- templates/widgets/notes.html -->
 <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
     <h2 class="text-lg font-semibold mb-2">📝 Notes</h2>
 
-    <!-- ADD NOTE -->
     <form method="POST" class="space-y-2">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <textarea 
-            name="note" 
-            rows="3" 
-            placeholder="Write a note..." 
-            class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600" 
+        <textarea
+            name="note"
+            rows="3"
+            placeholder="Write a note..."
+            class="w-full p-2 rounded bg-white dark:bg-gray-800 border dark:border-gray-600"
             required
         ></textarea>
 
@@ -18,34 +18,38 @@
         </button>
     </form>
 
-    <ul class="mt-4 space-y-2 text-sm">
+    <ul id="note-list" class="mt-4 space-y-2 text-sm">
         {% for note in notes %}
-        <li class="bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-600 flex justify-between items-center space-x-2">
-            <div 
-                contenteditable="true" 
-                data-note-id="{{ note.id }}" 
-                role="textbox" 
-                aria-multiline="true" 
-                tabindex="0" 
-                aria-label="Edit note" 
-                spellcheck="true" 
+        <li
+            data-id="{{ note.id }}"
+            class="note-row bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-600 flex items-center space-x-2"
+        >
+            <button
+                type="button"
+                class="note-handle text-gray-400 hover:text-gray-200 cursor-grab active:cursor-grabbing px-1"
+                aria-label="Drag note"
+                title="Drag"
+            >≡</button>
+
+            <div
+                contenteditable="true"
+                data-note-id="{{ note.id }}"
+                role="textbox"
+                aria-multiline="true"
+                tabindex="0"
+                aria-label="Edit note"
+                spellcheck="true"
                 class="editable-note flex-grow outline-none hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
-            >
-                {{ note.content }}
-            </div>
+            >{{ note.content }}</div>
 
-            <!-- DELETE NOTE -->
-            <form action="{{ url_for('delete_note', note_id=note.id) }}" method="POST">
+            <form action="{{ url_for('delete_note', note_id=note.id) }}" method="POST" class="note-delete-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <button 
-                    type="submit" 
-                    onclick="return confirm('Delete this note?')" 
+                <button
+                    type="submit"
+                    onclick="return confirm('Delete this note?')"
                     class="text-red-500"
                     title="Delete Note"
-                >
-                    🗑️
-                </button>
+                >🗑️</button>
             </form>
         </li>
         {% else %}
