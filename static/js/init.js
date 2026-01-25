@@ -1,6 +1,5 @@
 // static/js/init.js (module)
 
-// Load modules (side effects / listeners)
 import "./flash.js";
 import "./notes.js";
 import "./transactions.js";
@@ -10,9 +9,6 @@ import "./theme.js";
 import { initWidgetSorting } from "./widgets.js";
 import { updateChartData } from "./chart.js";
 
-/**
- * Register service worker (PWA)
- */
 async function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
     try {
@@ -22,45 +18,61 @@ async function registerServiceWorker() {
     }
 }
 
-/**
- * Initializes dashboard modules and ensures chart data is up to date.
- */
+function createLoadingIndicator() {
+    const el = document.createElement("div");
+    el.textContent = "Loading dashboard...";
+    el.className = "text-center text-gray-500 my-4 animate-pulse";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    return el;
+}
+
+function createErrorBanner() {
+    const el = document.createElement("div");
+    el.textContent = "Failed to load dashboard data. Refresh and try again.";
+    el.className = "flash-message text-red-500 text-center my-2";
+    el.setAttribute("role", "alert");
+    return el;
+}
+
+async function initDashboardDataWithRetry({ maxRetries = 3, retryDelayMs = 1500 } = {}) {
+    let retryCount = 0;
+
+    while (retryCount <= maxRetries) {
+        try {
+            await updateChartData();
+            return { ok: true, retries: retryCount };
+        } catch (err) {
+            retryCount += 1;
+            if (retryCount > maxRetries) {
+                return { ok: false, retries: retryCount, error: err };
+            }
+            await new Promise(resolve => window.setTimeout(resolve, retryDelayMs));
+        }
+    }
+
+    return { ok: false, retries: maxRetries + 1 };
+}
+
 async function initDashboard() {
     initWidgetSorting();
     await registerServiceWorker();
 
-    // Lightweight loading indicator
-    const loadingIndicator = document.createElement("div");
-    loadingIndicator.textContent = "Loading dashboard...";
-    loadingIndicator.className = "text-center text-gray-500 my-4 animate-pulse";
-    loadingIndicator.setAttribute("role", "status");
-    loadingIndicator.setAttribute("aria-live", "polite");
+    const loadingIndicator = createLoadingIndicator();
     document.body.prepend(loadingIndicator);
 
-    let retryCount = 0;
-    const maxRetries = 3;
+    const result = await initDashboardDataWithRetry({ maxRetries: 3, retryDelayMs: 1500 });
 
-    async function attemptUpdate() {
-        try {
-            await updateChartData();
-            loadingIndicator.remove();
-            document.dispatchEvent(new CustomEvent("dashboard-ready", { detail: { retries: retryCount } }));
-        } catch (err) {
-            retryCount++;
-            if (retryCount < maxRetries) {
-                setTimeout(attemptUpdate, 1500);
-            } else {
-                loadingIndicator.remove();
-                const errorContainer = document.createElement("div");
-                errorContainer.textContent = "⚠️ Failed to load dashboard data. Refresh and try again.";
-                errorContainer.className = "flash-message text-red-500 text-center my-2";
-                errorContainer.setAttribute("role", "alert");
-                document.body.prepend(errorContainer);
-            }
-        }
+    loadingIndicator.remove();
+
+    if (result.ok) {
+        document.dispatchEvent(
+            new CustomEvent("dashboard-ready", { detail: { retries: result.retries } })
+        );
+        return;
     }
 
-    await attemptUpdate();
+    document.body.prepend(createErrorBanner());
 }
 
 window.addEventListener("DOMContentLoaded", initDashboard);
