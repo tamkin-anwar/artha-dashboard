@@ -132,3 +132,48 @@ body {
 #dashboard-widgets {
     align-content: start;
 }
+
+.auth-bg {
+    background:
+        radial-gradient(900px 520px at 50% 18%, rgba(59,130,246,0.22), rgba(0,0,0,0)),
+        radial-gradient(900px 520px at 50% 86%, rgba(16,185,129,0.10), rgba(0,0,0,0)),
+        linear-gradient(180deg, #0b1220 0%, #08101d 100%);
+}
+
+.auth-card {
+    background: rgba(51, 58, 78, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.10);
+    backdrop-filter: blur(10px);
+}
+
+.auth-input {
+    background: rgba(17, 24, 39, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    color: #e5e7eb;
+}
+
+.auth-input::placeholder {
+    color: rgba(226, 232, 240, 0.55);
+}
+
+.auth-input:focus {
+    outline: 2px solid rgba(59,130,246,0.85);
+    outline-offset: 2px;
+}
+
+.auth-button {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.auth-button:hover {
+    filter: brightness(1.05);
+}
+
+.auth-link {
+    color: #60a5fa;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
