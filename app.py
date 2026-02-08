@@ -86,7 +86,9 @@ CACHE_EXPIRATION = 30
 
 @app.context_processor
 def inject_csrf_token():
-    return {"csrf_token": generate_csrf()}
+    # Do not use the key name "csrf_token" here.
+    # Flask-WTF provides csrf_token() in templates. Overriding it breaks templates.
+    return {"csrf_token_value": generate_csrf()}
 
 
 def is_ajax_request() -> bool:
