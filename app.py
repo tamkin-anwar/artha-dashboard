@@ -66,8 +66,10 @@ app.config["SESSION_COOKIE_SECURE"] = is_production
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 csrf = CSRFProtect(app)
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 db = SQLAlchemy(app)
@@ -84,23 +86,29 @@ CACHE_EXPIRATION = 30
 
 @app.context_processor
 def inject_csrf_token():
-    return dict(csrf_token=generate_csrf)
+    return {"csrf_token": generate_csrf()}
 
 
 def is_ajax_request() -> bool:
     xrw = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     accept_json = "application/json" in (request.headers.get("Accept") or "")
-    fetch_mode = request.headers.get("Sec-Fetch-Mode") == "cors"
-    return xrw or accept_json or fetch_mode or request.path.startswith("/api/")
+    return xrw or accept_json or request.path.startswith("/api/")
 
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
-    logging.info("CSRF error: %s", e.description)
+    log.info("CSRF error: %s", getattr(e, "description", ""))
     if is_ajax_request():
         return jsonify({"message": "CSRF token missing or invalid."}), 400
     flash("Security check failed. Please refresh and try again.", "error")
     return redirect(request.referrer or url_for("index"))
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if is_ajax_request():
+        return jsonify({"message": "Authentication required."}), 401
+    return redirect(url_for("login"))
 
 
 def _reset_finance_cache_for_user(user_id: int) -> None:
@@ -125,7 +133,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     first_name = db.Column(db.String(80), nullable=True)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -191,7 +199,7 @@ def index():
                 flash("Note added!", "success")
             except Exception as e:
                 db.session.rollback()
-                logging.error("Error adding note: %s", e, exc_info=True)
+                log.error("Error adding note: %s", e, exc_info=True)
                 flash("Error adding note", "error")
 
         return redirect(url_for("index"))
@@ -259,7 +267,7 @@ def register():
             return redirect(url_for("login"))
         except Exception as e:
             db.session.rollback()
-            logging.error("Error during registration: %s", e, exc_info=True)
+            log.error("Error during registration: %s", e, exc_info=True)
             flash("Error during registration", "error")
             return redirect(url_for("register"))
 
@@ -308,7 +316,7 @@ def update_note(note_id):
         return jsonify({"message": "Note updated"})
     except Exception as e:
         db.session.rollback()
-        logging.error("Error updating note: %s", e, exc_info=True)
+        log.error("Error updating note: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
 
@@ -341,7 +349,7 @@ def reorder_notes():
         return jsonify({"message": "Note order saved."})
     except Exception as e:
         db.session.rollback()
-        logging.error("Error saving note order: %s", e, exc_info=True)
+        log.error("Error saving note order: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
 
@@ -374,7 +382,7 @@ def delete_note(note_id):
 
     except Exception as e:
         db.session.rollback()
-        logging.error("Error deleting note: %s", e, exc_info=True)
+        log.error("Error deleting note: %s", e, exc_info=True)
 
         if is_ajax_request():
             return jsonify({"message": "Error deleting note"}), 500
@@ -431,7 +439,7 @@ def undo_delete_note():
 
     except Exception as e:
         db.session.rollback()
-        logging.error("Error undoing note delete: %s", e, exc_info=True)
+        log.error("Error undoing note delete: %s", e, exc_info=True)
         return jsonify({"message": "Error restoring note"}), 500
 
 
@@ -493,7 +501,7 @@ def add_transaction():
 
     except Exception as e:
         db.session.rollback()
-        logging.error("Error adding transaction: %s", e, exc_info=True)
+        log.error("Error adding transaction: %s", e, exc_info=True)
 
         msg = "Error adding transaction"
         if is_ajax_request():
@@ -534,7 +542,7 @@ def update_transaction(transaction_id):
         return jsonify({"message": "Transaction updated successfully"})
     except Exception as e:
         db.session.rollback()
-        logging.error("Error updating transaction: %s", e, exc_info=True)
+        log.error("Error updating transaction: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
 
@@ -571,7 +579,7 @@ def reorder_transactions():
         return jsonify({"message": "Transaction order saved."})
     except Exception as e:
         db.session.rollback()
-        logging.error("Error saving transaction order: %s", e, exc_info=True)
+        log.error("Error saving transaction order: %s", e, exc_info=True)
         return jsonify({"message": "Database error"}), 500
 
 
@@ -612,7 +620,7 @@ def delete_transaction(transaction_id):
 
     except Exception as e:
         db.session.rollback()
-        logging.error("Error deleting transaction: %s", e, exc_info=True)
+        log.error("Error deleting transaction: %s", e, exc_info=True)
 
         if is_ajax_request():
             return jsonify({"message": "Error deleting transaction"}), 500
@@ -680,7 +688,7 @@ def undo_delete_transaction():
 
     except Exception as e:
         db.session.rollback()
-        logging.error("Error undoing delete: %s", e, exc_info=True)
+        log.error("Error undoing delete: %s", e, exc_info=True)
         return jsonify({"message": "Error restoring transaction"}), 500
 
 
@@ -736,13 +744,13 @@ def add_security_headers(response):
 
 @app.errorhandler(404)
 def page_not_found(e):
-    logging.warning("404 error: %s at %s", e, request.path)
+    log.warning("404 error: %s at %s", e, request.path)
     return render_template("404.html"), 404
 
 
 @app.errorhandler(500)
 def internal_error(e):
-    logging.error("500 error: %s at %s", e, request.path, exc_info=True)
+    log.error("500 error: %s at %s", e, request.path, exc_info=True)
     db.session.rollback()
     return render_template("500.html"), 500
 
