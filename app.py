@@ -23,7 +23,9 @@ from flask_login import (
     current_user,
 )
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import func
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -31,23 +33,53 @@ os.makedirs(os.path.join(basedir, "instance"), exist_ok=True)
 
 app = Flask(__name__)
 
+is_render = os.environ.get("RENDER") is not None
+is_production = is_render or (os.environ.get("FLASK_ENV") == "production")
+
 secret = os.environ.get("SECRET_KEY")
+if is_production and not secret:
+    raise RuntimeError("SECRET_KEY is required in production")
 if not secret:
     secret = "dev-only-change-me"
 app.config["SECRET_KEY"] = secret
 
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'instance', 'site.db')}"
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'instance', 'site.db')}"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+if database_url:
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+    }
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
+app.config["SESSION_COOKIE_SECURE"] = is_production
 
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
 
 logging.basicConfig(level=logging.INFO)
 
 csrf = CSRFProtect(app)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+login_manager.session_protection = "strong"
+
+finance_cache = {}
+CACHE_EXPIRATION = 30
 
 
 @app.context_processor
@@ -71,16 +103,6 @@ def handle_csrf_error(e):
     return redirect(request.referrer or url_for("index"))
 
 
-db = SQLAlchemy(app)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
-
-finance_cache = {}
-CACHE_EXPIRATION = 30
-
-
 def _reset_finance_cache_for_user(user_id: int) -> None:
     finance_cache[user_id] = {"income": 0.0, "expense": 0.0, "timestamp": 0.0}
 
@@ -93,7 +115,7 @@ def validate_amount(amount_str: str) -> float:
     try:
         amount = float(amount_str)
         if amount < 0:
-            raise ValidationError("Amount must be non-negative.")
+            raise ValidationError("Amount must be non negative.")
         return amount
     except ValueError:
         raise ValidationError("Invalid amount format.")
@@ -137,6 +159,11 @@ class Transaction(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+
+@app.get("/healthz")
+def healthz():
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -299,9 +326,7 @@ def reorder_notes():
     except Exception:
         return jsonify({"message": "Order must be a list of integers."}), 400
 
-    notes = (
-        Note.query.filter(Note.user_id == current_user.id, Note.id.in_(ids)).all()
-    )
+    notes = Note.query.filter(Note.user_id == current_user.id, Note.id.in_(ids)).all()
 
     found_ids = {n.id for n in notes}
     if set(ids) != found_ids:
@@ -492,7 +517,7 @@ def update_transaction(transaction_id):
     try:
         amount = float(data.get("amount", tx.amount))
         if amount < 0:
-            return jsonify({"message": "Amount must be non-negative."}), 400
+            return jsonify({"message": "Amount must be non negative."}), 400
     except Exception:
         return jsonify({"message": "Invalid amount format."}), 400
 
@@ -685,9 +710,7 @@ def finance_totals():
             or 0
         )
 
-        cached.update(
-            {"income": float(income), "expense": float(expense), "timestamp": now}
-        )
+        cached.update({"income": float(income), "expense": float(expense), "timestamp": now})
 
     income = float(cached["income"])
     expense = float(cached["expense"])
@@ -725,4 +748,4 @@ def internal_error(e):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=not is_production)
