@@ -31,6 +31,11 @@ body {
     transition: color 0.3s ease;
 }
 
+/* Critical: allow grid children inside finance form to shrink instead of overflowing */
+.finance-tab form > * {
+    min-width: 0;
+}
+
 /* Summary numbers at bottom */
 .finance-income {
     color: var(--income-color) !important;
