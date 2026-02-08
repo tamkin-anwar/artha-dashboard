@@ -1,3 +1,6 @@
+<div class="finance-tab bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
+    <h2 class="text-lg font-semibold mb-4 text-black dark:text-white">💸 Finances</h2>
+
 <form
     method="POST"
     action="{{ url_for('add_transaction') }}"
@@ -62,3 +65,26 @@
         Add
     </button>
 </form>
+
+    <ul id="tx-list" class="space-y-3">
+        {% for tx in transactions %}
+        {% include "partials/transaction_row.html" %}
+        {% else %}
+        <li class="text-sm text-gray-500 dark:text-gray-300 text-center py-6">
+            No transactions yet.
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="mt-4 text-sm text-legend">
+        <p>💰 Income:
+        <strong id="finance-income" class="finance-income">${{ "%.2f"|format(income) }}</strong>
+        </p>
+        <p>💸 Expense:
+        <strong id="finance-expense" class="finance-expense">${{ "%.2f"|format(expense) }}</strong>
+        </p>
+        <p>📊 Balance:
+        <strong id="finance-balance" class="finance-balance">${{ "%.2f"|format(balance) }}</strong>
+        </p>
+    </div>
+</div>
