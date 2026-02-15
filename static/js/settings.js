@@ -1,52 +1,51 @@
-// static/js/settings.js
-import { getCurrencyCode, setCurrencyCode, applyCurrencyToAmountPrefixes } from "./currency.js";
-import { updateChartData } from "./chart.js";
+// static/js/settings.js (module)
 
-function setSelectValue(select, value) {
-    if (!select) return;
-    select.value = value;
+import { setCurrencyCode, getCurrencyCode, applyCurrencyToAmountPrefixes } from "./currency.js";
+
+function setSelectValueIfPresent(selectEl, value) {
+    if (!selectEl) return;
+    const optionExists = Array.from(selectEl.options).some((opt) => opt.value === value);
+    if (optionExists) selectEl.value = value;
 }
 
-function bindCurrencySelects() {
-    const desktop = document.getElementById("currency-select");
-    const mobile = document.getElementById("currency-select-mobile");
-    if (!desktop && !mobile) return;
+function syncCurrencySelects(code) {
+    setSelectValueIfPresent(document.getElementById("currency-select"), code);
+    setSelectValueIfPresent(document.getElementById("currency-select-mobile"), code);
+}
 
-    const applyValueEverywhere = (value) => {
-        setSelectValue(desktop, value);
-        setSelectValue(mobile, value);
-    };
-
-    const handleChange = async (value) => {
-        setCurrencyCode(value);
-        applyValueEverywhere(value);
-
-        applyCurrencyToAmountPrefixes();
-        document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
-
-        try {
-            await updateChartData();
-        } catch {}
-    };
-
-    const initial = getCurrencyCode();
-    applyValueEverywhere(initial);
+function applyCurrencyEverywhere() {
     applyCurrencyToAmountPrefixes();
-
-    if (desktop) {
-        desktop.addEventListener("change", (e) => handleChange(e.target.value));
-    }
-    if (mobile) {
-        mobile.addEventListener("change", (e) => handleChange(e.target.value));
-    }
+    document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
 }
 
-function initSettings() {
-    bindCurrencySelects();
+function bindCurrencySelect(selectEl) {
+    if (!selectEl) return;
+
+    if (selectEl.dataset.bound === "1") return;
+    selectEl.dataset.bound = "1";
+
+    selectEl.addEventListener("change", () => {
+        const code = selectEl.value;
+        const saved = setCurrencyCode(code);
+
+        syncCurrencySelects(saved);
+        applyCurrencyEverywhere();
+    });
+}
+
+function initCurrency() {
+    const saved = getCurrencyCode();
+
+    syncCurrencySelects(saved);
+
+    bindCurrencySelect(document.getElementById("currency-select"));
+    bindCurrencySelect(document.getElementById("currency-select-mobile"));
+
+    applyCurrencyEverywhere();
 }
 
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initSettings);
+    document.addEventListener("DOMContentLoaded", initCurrency);
 } else {
-    initSettings();
+    initCurrency();
 }

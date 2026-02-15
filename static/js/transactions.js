@@ -40,6 +40,27 @@ function parseEditableMoneyToNumber(text) {
     return Number.isFinite(num) ? num : null;
 }
 
+function formatRowMoney(row) {
+    const amountEl = row?.querySelector?.(".tx-amount");
+    if (!amountEl) return;
+
+    const rawAttr = amountEl.getAttribute("data-money-value");
+    if (rawAttr !== null && rawAttr !== "") {
+        const num = parseFloat(rawAttr);
+        if (Number.isFinite(num)) {
+            amountEl.textContent = formatMoney(num);
+            return;
+        }
+    }
+
+    const rawText = amountEl.textContent.trim().replace(/[^\d.-]/g, "");
+    const num = parseFloat(rawText);
+    if (Number.isFinite(num)) {
+        amountEl.textContent = formatMoney(num);
+        amountEl.setAttribute("data-money-value", String(num));
+    }
+}
+
 async function updateSummaryUI() {
     const incomeEl = document.getElementById("finance-income");
     const expenseEl = document.getElementById("finance-expense");
@@ -146,7 +167,10 @@ async function undoDeleteTransaction() {
 
             const typeSelect = restoredRow.querySelector(".tx-type");
             const amountEl = restoredRow.querySelector(".tx-amount");
-            if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+            if (typeSelect && amountEl) {
+                applyAmountTypeDataset(amountEl, typeSelect.value);
+                formatRowMoney(restoredRow);
+            }
 
             attachRowListeners(restoredRow);
 
@@ -332,7 +356,7 @@ async function saveTransaction(e) {
         row.removeAttribute("aria-busy");
         setTimeout(() => row.classList.remove("bg-green-100"), 1000);
 
-        amountEl.dataset.moneyValue = parsed;
+        amountEl.dataset.moneyValue = String(parsed);
         amountEl.textContent = formatMoney(parsed);
         applyAmountTypeDataset(amountEl, type);
 
@@ -407,7 +431,7 @@ function handleAddTransactionForm(form) {
 
             const amountEl = newRow.querySelector(".tx-amount");
             if (amountEl) {
-                amountEl.dataset.moneyValue = amountNum;
+                amountEl.dataset.moneyValue = String(amountNum);
                 amountEl.textContent = formatMoney(amountNum);
             }
 
@@ -416,6 +440,7 @@ function handleAddTransactionForm(form) {
 
             list.appendChild(newRow);
             attachRowListeners(newRow);
+            formatRowMoney(newRow);
 
             showToast("Transaction added!", "success");
 
@@ -439,7 +464,10 @@ function applyAllTransactionDatasets() {
     list.querySelectorAll("li[data-id]").forEach((row) => {
         const typeSelect = row.querySelector(".tx-type");
         const amountEl = row.querySelector(".tx-amount");
-        if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+        if (typeSelect && amountEl) {
+            applyAmountTypeDataset(amountEl, typeSelect.value);
+            formatRowMoney(row);
+        }
     });
 }
 
@@ -472,28 +500,12 @@ if (document.readyState === "loading") {
     initTransactions();
 }
 
-document.addEventListener("currency-refresh-ui", () => {
+document.addEventListener("currency-refresh-ui", async () => {
     const list = document.getElementById("tx-list");
     if (list) {
-        list.querySelectorAll("li[data-id]").forEach((row) => {
-            const amountEl = row.querySelector(".tx-amount");
-            if (!amountEl) return;
-
-            const raw = Number(amountEl.dataset.moneyValue);
-            if (!Number.isFinite(raw)) return;
-
-            amountEl.textContent = formatMoney(raw);
-        });
+        list.querySelectorAll("li[data-id]").forEach((row) => formatRowMoney(row));
     }
-
-    const ids = ["finance-income", "finance-expense", "finance-balance"];
-    ids.forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const raw = Number(el.dataset.moneyValue);
-        if (!Number.isFinite(raw)) return;
-        el.textContent = formatMoney(raw);
-    });
+    await updateSummaryUI();
 });
 
 export { saveTransaction };

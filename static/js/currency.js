@@ -12,7 +12,8 @@ const CURRENCY_PRESETS = {
     GBP: { code: "GBP", locale: "en-GB", symbol: "£" },
     EUR: { code: "EUR", locale: "de-DE", symbol: "€" },
 
-    // English digits, lakh/crore grouping
+    // English digits with lakh crore grouping
+    // Using en-IN grouping gives 10,00,00,000 behavior
     BDT: { code: "BDT", locale: "en-IN", symbol: "৳" },
 
     CAD: { code: "CAD", locale: "en-CA", symbol: "$" },
@@ -45,18 +46,25 @@ export function formatMoney(value) {
     const num = Number(value);
     const safeNumber = Number.isFinite(num) ? num : 0;
 
+    const symbol = preset.symbol || "$";
+
     try {
-        return new Intl.NumberFormat(preset.locale, {
+        const formatted = new Intl.NumberFormat(preset.locale, {
             style: "currency",
             currency: preset.code,
-            minimumFractionDigits: 2,
+            currencyDisplay: "narrowSymbol",
             maximumFractionDigits: 2,
-
-            // Force English digits always
             numberingSystem: "latn",
         }).format(safeNumber);
+
+        // Some environments show BDT instead of a symbol for Bangladeshi taka
+        // Force the taka symbol while keeping locale grouping
+        if (preset.code === "BDT") {
+            return formatted.replace(/\bBDT\b/g, symbol).replace(/\u00A0/g, " ");
+        }
+
+        return formatted.replace(/\u00A0/g, " ");
     } catch {
-        const symbol = preset.symbol || "$";
         return `${symbol}${safeNumber.toFixed(2)}`;
     }
 }

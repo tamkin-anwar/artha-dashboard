@@ -26,7 +26,7 @@
                 data-type="{{ tx.type }}"
                 data-money-value="{{ tx.amount }}"
                 class="tx-amount w-full sm:w-1/4 bg-transparent outline-none text-right text-black dark:text-white">
-                ${{ "%.2f"|format(tx.amount) }}
+                {{ "%.2f"|format(tx.amount) }}
             </span>
 
         <select data-id="{{ tx.id }}"
