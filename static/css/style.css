@@ -1,42 +1,43 @@
 :root {
     /* Light mode colors */
     --bg-color: #ffffff;
-    --text-color: #1f2937; /* gray-800 */
-    --income-color: #22c55e; /* green-500 */
-    --expense-color: #ef4444; /* red-500 */
-    --balance-color: #2563eb; /* blue-600 */
+    --text-color: #1f2937;
+    --income-color: #22c55e;
+    --expense-color: #ef4444;
+    --balance-color: #2563eb;
     --legend-color: #1f2937;
 }
 
 .dark {
     /* Dark mode colors */
-    --bg-color: #1f2937; /* gray-800 */
-    --text-color: #f3f4f6; /* gray-100 */
-    --income-color: #22c55e; /* green-500 */
-    --expense-color: #ef4444; /* red-500 */
-    --balance-color: #3b82f6; /* blue-500 */
+    --bg-color: #1f2937;
+    --text-color: #f3f4f6;
+    --income-color: #22c55e;
+    --expense-color: #ef4444;
+    --balance-color: #3b82f6;
     --legend-color: #f3f4f6;
 }
 
-/* Apply the variables globally */
+/* Global */
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Finance tab container wrapper */
+/* =========================
+   Finance
+   ========================= */
+
 .finance-tab {
     color: var(--text-color);
     transition: color 0.3s ease;
 }
 
-/* Critical: allow grid children inside finance form to shrink instead of overflowing */
 .finance-tab form > * {
     min-width: 0;
 }
 
-/* Summary numbers at bottom */
 .finance-income {
     color: var(--income-color) !important;
     transition: color 0.3s ease;
@@ -52,31 +53,25 @@ body {
     transition: color 0.3s ease;
 }
 
-/* Transaction amount coloring based on type dynamically */
 .finance-tab .tx-amount[data-type="income"] {
     color: var(--income-color) !important;
-    transition: color 0.3s ease;
 }
 
 .finance-tab .tx-amount[data-type="expense"] {
     color: var(--expense-color) !important;
-    transition: color 0.3s ease;
 }
 
-/* Legend and labels in charts and finance text */
 .text-legend {
     color: var(--legend-color);
     transition: color 0.3s ease;
 }
 
-/* Editable transaction text and inputs */
 .finance-tab .tx-desc,
 .finance-tab .tx-amount,
 .finance-tab .tx-type {
     transition: color 0.3s ease, background-color 0.3s ease;
 }
 
-/* Inputs, selects, textareas adapt colors */
 .finance-tab input,
 .finance-tab select,
 .finance-tab textarea {
@@ -86,15 +81,12 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Placeholder text color adapts too */
 .finance-tab input::placeholder,
 .finance-tab textarea::placeholder,
 .finance-tab select::placeholder {
     color: var(--legend-color);
-    transition: color 0.3s ease;
 }
 
-/* Focus outline styling */
 .finance-tab input:focus,
 .finance-tab select:focus,
 .finance-tab textarea:focus,
@@ -106,8 +98,9 @@ body {
 }
 
 /* =========================
-    Dashboard layout (masonry)
-    ========================= */
+   Dashboard Masonry Grid
+   ========================= */
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -121,9 +114,61 @@ body {
     align-self: start;
 }
 
+#dashboard-widgets {
+    align-content: start;
+}
+
+/* =========================
+   Widget Drag Handle
+   Drag only from header bar
+   ========================= */
+
+.widget-handle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+
+    background: rgba(229, 231, 235, 0.75);
+    color: var(--text-color);
+
+    user-select: none;
+    cursor: grab;
+    touch-action: manipulation;
+
+    border: 1px solid rgba(31, 41, 55, 0.10);
+    transition: background-color 0.15s ease,
+                border-color 0.15s ease,
+                transform 0.15s ease;
+}
+
+.dark .widget-handle {
+    background: rgba(17, 24, 39, 0.55);
+    border-color: rgba(243, 244, 246, 0.12);
+}
+
+.widget-handle:active {
+    cursor: grabbing;
+}
+
+.widget-handle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37, 99, 235, 0.25);
+}
+
+.dark .widget-handle:hover {
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+/* Drag visual states */
+
 .widget-ghost {
     opacity: 0.35;
     transform: scale(0.98);
+    border-radius: 16px;
 }
 
 .widget-chosen {
@@ -134,9 +179,17 @@ body {
     cursor: grabbing;
 }
 
-#dashboard-widgets {
-    align-content: start;
+/* Slightly larger tap area on small screens */
+
+@media (max-width: 768px) {
+    .widget-handle {
+        padding: 12px 14px;
+    }
 }
+
+/* =========================
+   Auth
+   ========================= */
 
 .auth-bg {
     background:

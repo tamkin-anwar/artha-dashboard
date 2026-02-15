@@ -11,7 +11,10 @@ const CURRENCY_PRESETS = {
     USD: { code: "USD", locale: "en-US", symbol: "$" },
     GBP: { code: "GBP", locale: "en-GB", symbol: "£" },
     EUR: { code: "EUR", locale: "de-DE", symbol: "€" },
-    BDT: { code: "BDT", locale: "bn-BD", symbol: "৳" },
+
+    // Lakh crore grouping with Latin digits and "৳ 1,00,000.00" style
+    BDT: { code: "BDT", locale: "en-IN", symbol: "৳" },
+
     CAD: { code: "CAD", locale: "en-CA", symbol: "$" },
     AUD: { code: "AUD", locale: "en-AU", symbol: "$" },
 };
@@ -33,8 +36,21 @@ export function getCurrencyPreset() {
 export function setCurrencyCode(code) {
     const preset = safeGetPreset(code);
     localStorage.setItem(STORAGE_KEY, preset.code);
-    document.dispatchEvent(new CustomEvent("currency-changed", { detail: { currency: preset.code } }));
+
+    document.dispatchEvent(
+        new CustomEvent("currency-changed", { detail: { currency: preset.code } })
+    );
+
     return preset.code;
+}
+
+function intlCurrencyParts(preset, safeNumber) {
+    return new Intl.NumberFormat(preset.locale, {
+        style: "currency",
+        currency: preset.code,
+        maximumFractionDigits: 2,
+        numberingSystem: "latn",
+    }).formatToParts(safeNumber);
 }
 
 export function formatMoney(value) {
@@ -43,14 +59,39 @@ export function formatMoney(value) {
     const safeNumber = Number.isFinite(num) ? num : 0;
 
     try {
-        return new Intl.NumberFormat(preset.locale, {
+        // Default formatting for most currencies
+        const formatted = new Intl.NumberFormat(preset.locale, {
             style: "currency",
             currency: preset.code,
             maximumFractionDigits: 2,
+            numberingSystem: "latn",
         }).format(safeNumber);
+
+        // For BDT, force "৳ " prefix with a space, keep en-IN grouping and Latin digits
+        if (preset.code === "BDT") {
+            const parts = intlCurrencyParts(preset, safeNumber);
+            const numberOnly = parts
+                .filter((p) => p.type !== "currency" && p.type !== "literal")
+                .map((p) => p.value)
+                .join("");
+
+            // The above removes separators in some locales, so build it correctly:
+            // Better approach: take everything except the currency symbol, then trim.
+            const withoutCurrency = parts
+                .filter((p) => p.type !== "currency")
+                .map((p) => p.value)
+                .join("")
+                .trim();
+
+            return `${preset.symbol} ${withoutCurrency}`;
+        }
+
+        return formatted;
     } catch {
         const symbol = preset.symbol || "$";
-        return `${symbol}${safeNumber.toFixed(2)}`;
+        return preset.code === "BDT"
+            ? `${symbol} ${safeNumber.toFixed(2)}`
+            : `${symbol}${safeNumber.toFixed(2)}`;
     }
 }
 
