@@ -1,5 +1,4 @@
 :root {
-    /* Light mode colors */
     --bg-color: #ffffff;
     --text-color: #1f2937;
     --income-color: #22c55e;
@@ -9,7 +8,6 @@
 }
 
 .dark {
-    /* Dark mode colors */
     --bg-color: #1f2937;
     --text-color: #f3f4f6;
     --income-color: #22c55e;
@@ -18,7 +16,10 @@
     --legend-color: #f3f4f6;
 }
 
-/* Global */
+/* =========================
+    Global
+   ========================= */
+
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -26,7 +27,7 @@ body {
 }
 
 /* =========================
-   Finance
+    Finance
    ========================= */
 
 .finance-tab {
@@ -40,17 +41,14 @@ body {
 
 .finance-income {
     color: var(--income-color) !important;
-    transition: color 0.3s ease;
 }
 
 .finance-expense {
     color: var(--expense-color) !important;
-    transition: color 0.3s ease;
 }
 
 .finance-balance {
     color: var(--balance-color) !important;
-    transition: color 0.3s ease;
 }
 
 .finance-tab .tx-amount[data-type="income"] {
@@ -63,13 +61,6 @@ body {
 
 .text-legend {
     color: var(--legend-color);
-    transition: color 0.3s ease;
-}
-
-.finance-tab .tx-desc,
-.finance-tab .tx-amount,
-.finance-tab .tx-type {
-    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .finance-tab input,
@@ -78,19 +69,11 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     border-color: var(--legend-color);
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-.finance-tab input::placeholder,
-.finance-tab textarea::placeholder,
-.finance-tab select::placeholder {
-    color: var(--legend-color);
 }
 
 .finance-tab input:focus,
 .finance-tab select:focus,
 .finance-tab textarea:focus,
-.finance-tab .editable-note:focus,
 .finance-tab .tx-desc:focus,
 .finance-tab .tx-amount:focus {
     outline: 2px solid var(--balance-color);
@@ -98,7 +81,7 @@ body {
 }
 
 /* =========================
-   Dashboard Masonry Grid
+    Dashboard Masonry Grid
    ========================= */
 
 .dashboard-grid {
@@ -112,6 +95,7 @@ body {
 
 .widget {
     align-self: start;
+    position: relative;
 }
 
 #dashboard-widgets {
@@ -119,51 +103,36 @@ body {
 }
 
 /* =========================
-   Widget Drag Handle
-   Drag only from header bar
+    Invisible Drag Strip
+    Drag only from top area
    ========================= */
 
-.widget-handle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.widget-drag-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
 
-    margin-bottom: 12px;
-    padding: 10px 12px;
-    border-radius: 12px;
-
-    background: rgba(229, 231, 235, 0.75);
-    color: var(--text-color);
-
-    user-select: none;
+    background: transparent;
     cursor: grab;
-    touch-action: manipulation;
-
-    border: 1px solid rgba(31, 41, 55, 0.10);
-    transition: background-color 0.15s ease,
-                border-color 0.15s ease,
-                transform 0.15s ease;
+    user-select: none;
+    z-index: 10;
 }
 
-.dark .widget-handle {
-    background: rgba(17, 24, 39, 0.55);
-    border-color: rgba(243, 244, 246, 0.12);
-}
-
-.widget-handle:active {
+.widget-drag-zone:active {
     cursor: grabbing;
 }
 
-.widget-handle:hover {
-    transform: translateY(-1px);
-    border-color: rgba(37, 99, 235, 0.25);
+.is-widget-dragging {
+    user-select: none;
 }
 
-.dark .widget-handle:hover {
-    border-color: rgba(59, 130, 246, 0.25);
+.is-widget-dragging .widget-drag-zone {
+    cursor: grabbing;
 }
 
-/* Drag visual states */
+/* Sortable states */
 
 .widget-ghost {
     opacity: 0.35;
@@ -179,16 +148,8 @@ body {
     cursor: grabbing;
 }
 
-/* Slightly larger tap area on small screens */
-
-@media (max-width: 768px) {
-    .widget-handle {
-        padding: 12px 14px;
-    }
-}
-
 /* =========================
-   Auth
+    Auth
    ========================= */
 
 .auth-bg {

@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center">
         <h1 class="text-xl font-bold flex items-center space-x-2">
             <span class="w-6 h-6 text-blue-600 dark:text-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 0 24" class="w-6 h-6">
                     <title>Artha Logo</title>
                     <path d="M0 11.981C.004 5.612 4.965.403 11.233.002L11.268 0v11.981c0 .139.038.269.105.379l-.002-.003l5.989 10.378A11.831 11.831 0 0 1 12 23.999c-6.627 0-12-5.373-12-12v-.018v.001zm13.318.752H24a12.006 12.006 0 0 1-5.291 9.231l-.043.027zm-.548-1.503V0c6.04.388 10.842 5.19 11.229 11.194l.002.035z"/>
                 </svg>
@@ -139,25 +139,32 @@
     {% endwith %}
 
     <section id="dashboard-widgets" class="dashboard-grid" aria-label="Dashboard widgets">
+
         <div class="widget" id="widget-finance">
+            <div class="widget-drag-zone" aria-hidden="true"></div>
             {% include "widgets/finance.html" %}
         </div>
 
         <div class="widget" id="widget-notes">
+            <div class="widget-drag-zone" aria-hidden="true"></div>
             {% include "widgets/notes.html" %}
         </div>
 
         <div class="widget" id="widget-chart">
+            <div class="widget-drag-zone" aria-hidden="true"></div>
             {% include "widgets/chart.html" %}
         </div>
 
         <div class="widget" id="widget-calculator">
+            <div class="widget-drag-zone" aria-hidden="true"></div>
             {% include "widgets/calculator.html" %}
         </div>
 
         <div class="widget" id="widget-calendar">
+            <div class="widget-drag-zone" aria-hidden="true"></div>
             {% include "widgets/calendar.html" %}
         </div>
+
     </section>
 </main>
 

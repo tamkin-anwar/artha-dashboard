@@ -2,7 +2,6 @@
 
 function packMasonryGrid(container) {
     const styles = window.getComputedStyle(container);
-
     const rowHeight = parseFloat(styles.getPropertyValue("grid-auto-rows")) || 10;
 
     const rowGapRaw =
@@ -12,7 +11,9 @@ function packMasonryGrid(container) {
 
     const rowGap = parseFloat(rowGapRaw) || 0;
 
-    const children = Array.from(container.children).filter((el) => el.classList?.contains("widget"));
+    const children = Array.from(container.children).filter((el) =>
+        el.classList && el.classList.contains("widget")
+    );
 
     children.forEach((widget) => {
         widget.style.gridRowEnd = "";
@@ -54,7 +55,9 @@ function setupAutoPacking(container) {
     });
 
     Array.from(container.children).forEach((widget) => {
-        if (widget.classList?.contains("widget")) widgetResizeObserver.observe(widget);
+        if (widget.classList && widget.classList.contains("widget")) {
+            widgetResizeObserver.observe(widget);
+        }
     });
 
     const mutationObserver = new MutationObserver(() => {
@@ -77,56 +80,32 @@ function setupAutoPacking(container) {
     };
 }
 
-function ensureWidgetHandle(widget) {
-    if (!widget || !widget.classList?.contains("widget")) return;
+function isInteractiveElement(el) {
+    if (!el) return false;
 
-    // If a handle already exists, do nothing
-    if (widget.querySelector(".widget-handle")) return;
+    const selector =
+        "input, textarea, select, button, a, label, [contenteditable='true'], [role='button'], [role='textbox']";
 
-    const handle = document.createElement("div");
-    handle.className =
-        "widget-handle flex items-center justify-between mb-3 px-3 py-2 rounded-lg " +
-        "bg-gray-200/70 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 " +
-        "select-none cursor-move";
-    handle.setAttribute("role", "button");
-    handle.setAttribute("tabindex", "0");
-    handle.setAttribute("aria-label", "Drag widget");
+    return Boolean(el.closest(selector));
+}
 
-    const left = document.createElement("div");
-    left.className = "flex items-center gap-2";
+function ensureDragZones(container) {
+    const widgets = Array.from(container.querySelectorAll(".widget"));
 
-    const grip = document.createElement("span");
-    grip.className = "text-lg leading-none";
-    grip.textContent = "⋮⋮";
+    widgets.forEach((widget) => {
+        if (widget.querySelector(".widget-drag-zone")) return;
 
-    const label = document.createElement("span");
-    label.className = "text-sm font-semibold";
-    label.textContent = "Move";
+        const zone = document.createElement("div");
+        zone.className = "widget-drag-zone";
+        zone.setAttribute("aria-hidden", "true");
 
-    left.appendChild(grip);
-    left.appendChild(label);
-
-    const hint = document.createElement("span");
-    hint.className = "text-xs opacity-70";
-    hint.textContent = "Drag here";
-
-    handle.appendChild(left);
-    handle.appendChild(hint);
-
-    // Insert handle as the first child so it sits above widget content
-    widget.insertBefore(handle, widget.firstChild);
-
-    // Improve scroll behavior on touch devices
-    // Drag starts only from the handle, so allow normal scroll elsewhere
-    handle.style.touchAction = "none";
+        widget.prepend(zone);
+    });
 }
 
 export function initWidgetSorting() {
     const container = document.getElementById("dashboard-widgets");
     if (!container) return;
-
-    // Inject handles for every widget so drag only works from the top bar everywhere
-    Array.from(container.children).forEach((widget) => ensureWidgetHandle(widget));
 
     const savedOrder = JSON.parse(localStorage.getItem("widgetOrder"));
     if (savedOrder && savedOrder.length) {
@@ -147,6 +126,8 @@ export function initWidgetSorting() {
         return;
     }
 
+    ensureDragZones(container);
+
     new Sortable(container, {
         animation: 200,
         ghostClass: "widget-ghost",
@@ -154,26 +135,35 @@ export function initWidgetSorting() {
         dragClass: "widget-drag",
 
         draggable: ".widget",
-        handle: ".widget-handle",
+        handle: ".widget-drag-zone",
 
-        // Helps prevent accidental drags while scrolling on touch
-        delay: 150,
+        delay: 140,
         delayOnTouchOnly: true,
-        touchStartThreshold: 10,
+        touchStartThreshold: 8,
+
+        scroll: true,
+        scrollSensitivity: 60,
+        scrollSpeed: 14,
 
         forceFallback: true,
+        fallbackTolerance: 6,
+
+        onMove: (evt) => {
+            if (isInteractiveElement(evt.originalEvent?.target)) return false;
+            return true;
+        },
 
         onStart: () => {
             packingController.setDragging(true);
+            document.documentElement.classList.add("is-widget-dragging");
             rafPack(container);
         },
-        onEnd: () => {
-            const order = Array.from(container.children)
-                .filter((el) => el.classList?.contains("widget"))
-                .map((widget) => widget.id);
 
+        onEnd: () => {
+            const order = Array.from(container.children).map((widget) => widget.id);
             localStorage.setItem("widgetOrder", JSON.stringify(order));
             packingController.setDragging(false);
+            document.documentElement.classList.remove("is-widget-dragging");
         },
     });
 }
