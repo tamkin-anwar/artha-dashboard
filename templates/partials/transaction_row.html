@@ -24,9 +24,10 @@
             <span contenteditable="true"
                 data-id="{{ tx.id }}"
                 data-type="{{ tx.type }}"
+                data-money-value="{{ tx.amount }}"
                 class="tx-amount w-full sm:w-1/4 bg-transparent outline-none text-right text-black dark:text-white">
-            ${{ "%.2f"|format(tx.amount) }}
-        </span>
+                ${{ "%.2f"|format(tx.amount) }}
+            </span>
 
         <select data-id="{{ tx.id }}"
                 class="tx-type min-w-[100px] sm:w-[110px] bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 dark:border-gray-700 rounded px-2 py-1">

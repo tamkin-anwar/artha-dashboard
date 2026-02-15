@@ -5,6 +5,7 @@ import "./notes.js";
 import "./transactions.js";
 import "./calculator.js";
 import "./theme.js";
+import "./settings.js";
 
 import { initWidgetSorting } from "./widgets.js";
 import { updateChartData } from "./chart.js";
@@ -44,9 +45,6 @@ function initSettingsMenu() {
 
     const mobileSettingsBtn = document.getElementById("mobile-settings-btn");
     const mobileSettingsPanel = document.getElementById("mobile-settings-panel");
-
-    const currencySelect = document.getElementById("currency-select");
-    const currencySelectMobile = document.getElementById("currency-select-mobile");
 
     if (btn && menu) {
         const closeMenu = () => {
@@ -98,31 +96,6 @@ function initSettingsMenu() {
             }
         });
     }
-
-    const savedCurrency = localStorage.getItem("currency") || "USD";
-    if (currencySelect) currencySelect.value = savedCurrency;
-    if (currencySelectMobile) currencySelectMobile.value = savedCurrency;
-
-    const onCurrencyChange = (value) => {
-        localStorage.setItem("currency", value);
-        window.dispatchEvent(new CustomEvent("artha:currency-changed", { detail: { currency: value } }));
-    };
-
-    if (currencySelect) {
-        currencySelect.addEventListener("change", (e) => {
-            const value = e.target.value;
-            if (currencySelectMobile) currencySelectMobile.value = value;
-            onCurrencyChange(value);
-        });
-    }
-
-    if (currencySelectMobile) {
-        currencySelectMobile.addEventListener("change", (e) => {
-            const value = e.target.value;
-            if (currencySelect) currencySelect.value = value;
-            onCurrencyChange(value);
-        });
-    }
 }
 
 async function initDashboardDataWithRetry({ maxRetries = 3, retryDelayMs = 1500 } = {}) {
@@ -137,7 +110,7 @@ async function initDashboardDataWithRetry({ maxRetries = 3, retryDelayMs = 1500 
             if (retryCount > maxRetries) {
                 return { ok: false, retries: retryCount, error: err };
             }
-            await new Promise(resolve => window.setTimeout(resolve, retryDelayMs));
+            await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
         }
     }
 
@@ -157,9 +130,7 @@ async function initDashboard() {
     loadingIndicator.remove();
 
     if (result.ok) {
-        document.dispatchEvent(
-            new CustomEvent("dashboard-ready", { detail: { retries: result.retries } })
-        );
+        document.dispatchEvent(new CustomEvent("dashboard-ready", { detail: { retries: result.retries } }));
         return;
     }
 

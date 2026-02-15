@@ -1,54 +1,46 @@
 // static/js/transactions.js
 import { updateChartData } from "./chart.js";
 import { showToast } from "./toast.js";
+import { formatMoney } from "./currency.js";
 
 let ariaLiveRegion = null;
 let saveTimeout = null;
 let txSortable = null;
 
-/**
- * Read CSRF token from <meta name="csrf-token" content="...">
- * base.html includes:
- * <meta name="csrf-token" content="{{ csrf_token() }}">
- */
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute("content") : "";
-    }
+}
 
-    function csrfHeaders() {
+function csrfHeaders() {
     const token = getCsrfToken();
     if (!token) {
-        console.warn("[CSRF] Missing meta csrf-token. base.html may be cached/stale.");
+        console.warn("[CSRF] Missing meta csrf-token. base.html may be cached or stale.");
     }
     return {
         "X-Requested-With": "XMLHttpRequest",
         "X-CSRFToken": token,
         "X-CSRF-Token": token,
     };
-    }
+}
 
-    /** Debounce wrapper */
-    function debounceSaveTransaction(e) {
+function debounceSaveTransaction(e) {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => saveTransaction(e), 300);
-    }
+}
 
-    /** Format number to $0.00 */
-    function formatMoney(value) {
-    const num = Number(value);
-    if (Number.isNaN(num)) return "$0.00";
-    return `$${num.toFixed(2)}`;
-    }
-
-    /** Keep dataset type consistent (CSS handles coloring) */
-    function applyAmountTypeDataset(amountEl, type) {
+function applyAmountTypeDataset(amountEl, type) {
     if (!amountEl) return;
     amountEl.dataset.type = type;
-    }
+}
 
-    /** Fetch totals and update Summary UI */
-    async function updateSummaryUI() {
+function parseEditableMoneyToNumber(text) {
+    const cleaned = (text || "").toString().trim().replace(/[^\d.-]/g, "");
+    const num = Number.parseFloat(cleaned);
+    return Number.isFinite(num) ? num : null;
+}
+
+async function updateSummaryUI() {
     const incomeEl = document.getElementById("finance-income");
     const expenseEl = document.getElementById("finance-expense");
     const balanceEl = document.getElementById("finance-balance");
@@ -56,33 +48,35 @@ function getCsrfToken() {
 
     try {
         const res = await fetch("/api/finance_totals", {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
         });
         if (!res.ok) throw new Error("Failed to fetch totals");
 
         const data = await res.json();
+
+        incomeEl.dataset.moneyValue = data.income;
+        expenseEl.dataset.moneyValue = data.expense;
+        balanceEl.dataset.moneyValue = data.balance;
+
         incomeEl.textContent = formatMoney(data.income);
         expenseEl.textContent = formatMoney(data.expense);
         balanceEl.textContent = formatMoney(data.balance);
     } catch (err) {
         console.warn("Could not update summary UI:", err);
     }
-    }
+}
 
-    /**
-     * Persist transaction order to backend
-     */
-    async function persistTransactionOrder(listEl) {
-    const ids = Array.from(listEl.querySelectorAll('li[data-id]')).map(li => Number(li.dataset.id));
+async function persistTransactionOrder(listEl) {
+    const ids = Array.from(listEl.querySelectorAll("li[data-id]")).map((li) => Number(li.dataset.id));
     if (!ids.length) return;
 
     const res = await fetch("/reorder_transactions", {
         method: "POST",
         credentials: "same-origin",
         headers: {
-        "Content-Type": "application/json",
-        ...csrfHeaders(),
+            "Content-Type": "application/json",
+            ...csrfHeaders(),
         },
         body: JSON.stringify({ order: ids }),
     });
@@ -91,18 +85,13 @@ function getCsrfToken() {
     if (!res.ok) {
         const msg = data?.message || "Failed to save order";
         showToast(msg, "error");
-        return;
     }
-    }
+}
 
-    /**
-     * Init Sortable for transactions only (NOT widgets)
-     */
-    function initTransactionSortable() {
+function initTransactionSortable() {
     const list = document.getElementById("tx-list");
     if (!list) return;
 
-    // Don’t double-bind
     if (list.dataset.sortableBound === "1") return;
 
     if (!window.Sortable) {
@@ -115,38 +104,34 @@ function getCsrfToken() {
         handle: ".tx-handle",
         draggable: "li[data-id]",
         onEnd: async () => {
-        try {
-            await persistTransactionOrder(list);
-            showToast("Order saved", "success");
-        } catch (e) {
-            console.warn("Persist order failed:", e);
-            showToast("Could not save order", "error");
-        }
+            try {
+                await persistTransactionOrder(list);
+                showToast("Order saved", "success");
+            } catch (e) {
+                console.warn("Persist order failed:", e);
+                showToast("Could not save order", "error");
+            }
         },
     });
 
     list.dataset.sortableBound = "1";
-    }
+}
 
-    /**
-     * Undo delete transaction (AJAX)
-     * Expects: { message, row_html }
-     */
-    async function undoDeleteTransaction() {
+async function undoDeleteTransaction() {
     try {
         const res = await fetch("/undo_delete_transaction", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: csrfHeaders(),
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-        const msg = data?.message || "Undo failed";
-        showToast(msg, "error");
-        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
-        return;
+            const msg = data?.message || "Undo failed";
+            showToast(msg, "error");
+            if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+            return;
         }
 
         const html = data?.row_html || "";
@@ -157,37 +142,34 @@ function getCsrfToken() {
         const list = document.getElementById("tx-list");
 
         if (restoredRow && list) {
-        list.prepend(restoredRow);
+            list.prepend(restoredRow);
 
-        const typeSelect = restoredRow.querySelector(".tx-type");
-        const amountEl = restoredRow.querySelector(".tx-amount");
-        if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+            const typeSelect = restoredRow.querySelector(".tx-type");
+            const amountEl = restoredRow.querySelector(".tx-amount");
+            if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
 
-        attachRowListeners(restoredRow);
+            attachRowListeners(restoredRow);
 
-        const msg = data?.message || "Transaction restored.";
-        showToast(msg, "success");
-        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+            const msg = data?.message || "Transaction restored.";
+            showToast(msg, "success");
+            if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
 
-        // Save order after prepend so DB matches UI
-        await persistTransactionOrder(list);
+            await persistTransactionOrder(list);
         } else {
-        showToast("Transaction restored, but UI could not render the row.", "error");
+            showToast("Transaction restored, but UI could not render the row.", "error");
         }
 
         await updateChartData();
         await updateSummaryUI();
+        document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
     } catch (err) {
         console.error("Undo delete transaction error:", err);
         showToast("Network error while undoing delete", "error");
         if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while undoing delete";
     }
-    }
+}
 
-    /**
-     * Attach delete listener to a row delete form (AJAX)
-     */
-    function attachDeleteListener(row) {
+function attachDeleteListener(row) {
     const deleteForm = row.querySelector(".tx-delete-form");
     if (!deleteForm) return;
 
@@ -204,64 +186,61 @@ function getCsrfToken() {
         rowEl.classList.add("bg-yellow-100");
 
         try {
-        const res = await fetch(deleteForm.action, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: csrfHeaders(),
-        });
+            const res = await fetch(deleteForm.action, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: csrfHeaders(),
+            });
 
-        const data = await res.json().catch(() => ({}));
+            const data = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-            const msg = data?.message || "Delete failed";
+            if (!res.ok) {
+                const msg = data?.message || "Delete failed";
+                rowEl.classList.remove("bg-yellow-100");
+                rowEl.classList.add("bg-red-100");
+                rowEl.removeAttribute("aria-busy");
+                setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
+
+                showToast(msg, "error");
+                if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+                return;
+            }
+
+            rowEl.remove();
+
+            const msg = data?.message || "Transaction deleted";
+            if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
+
+            if (data?.can_undo) {
+                showToast("Transaction deleted", "info", 10000, {
+                    actionText: "Undo",
+                    onAction: () => undoDeleteTransaction(),
+                });
+            } else {
+                showToast(msg, "info");
+            }
+
+            const list = document.getElementById("tx-list");
+            if (list) await persistTransactionOrder(list);
+
+            await updateChartData();
+            await updateSummaryUI();
+            document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
+        } catch (err) {
+            console.error("Network error deleting transaction:", err);
+
             rowEl.classList.remove("bg-yellow-100");
             rowEl.classList.add("bg-red-100");
             rowEl.removeAttribute("aria-busy");
             setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
 
-            showToast(msg, "error");
-            if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
-            return;
-        }
-
-        rowEl.remove();
-
-        const msg = data?.message || "Transaction deleted";
-        if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
-
-        if (data?.can_undo) {
-            showToast("Transaction deleted", "info", 10000, {
-            actionText: "Undo",
-            onAction: () => undoDeleteTransaction(),
-            });
-        } else {
-            showToast(msg, "info");
-        }
-
-        // Save order after removal so DB matches UI
-        const list = document.getElementById("tx-list");
-        if (list) await persistTransactionOrder(list);
-
-        await updateChartData();
-        await updateSummaryUI();
-        } catch (err) {
-        console.error("Network error deleting transaction:", err);
-
-        rowEl.classList.remove("bg-yellow-100");
-        rowEl.classList.add("bg-red-100");
-        rowEl.removeAttribute("aria-busy");
-        setTimeout(() => rowEl.classList.remove("bg-red-100"), 1000);
-
-        showToast("Network error while deleting transaction", "error");
-        if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while deleting transaction";
+            showToast("Network error while deleting transaction", "error");
+            if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while deleting transaction";
         }
     });
-    }
+}
 
-    /**
-     * Attach inline edit listeners to a single transaction row
-     */
-    function attachRowListeners(row) {
+function attachRowListeners(row) {
     const desc = row.querySelector(".tx-desc");
     const amount = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
@@ -270,38 +249,35 @@ function getCsrfToken() {
 
     if (desc) {
         desc.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            desc.blur();
-        }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                desc.blur();
+            }
         });
         desc.addEventListener("blur", debounceSaveTransaction);
     }
 
     if (amount) {
         amount.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            amount.blur();
-        }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                amount.blur();
+            }
         });
         amount.addEventListener("blur", debounceSaveTransaction);
     }
 
     if (typeSelect) {
         typeSelect.addEventListener("change", (e) => {
-        const rowEl = e.target.closest("li[data-id]");
-        const amountEl = rowEl?.querySelector(".tx-amount");
-        applyAmountTypeDataset(amountEl, e.target.value);
-        debounceSaveTransaction(e);
+            const rowEl = e.target.closest("li[data-id]");
+            const amountEl = rowEl?.querySelector(".tx-amount");
+            applyAmountTypeDataset(amountEl, e.target.value);
+            debounceSaveTransaction(e);
         });
     }
-    }
+}
 
-    /**
-     * Save transaction edits (inline)
-     */
-    async function saveTransaction(e) {
+async function saveTransaction(e) {
     const row = e.target.closest("li[data-id]");
     if (!row) return;
 
@@ -312,43 +288,43 @@ function getCsrfToken() {
     if (!descEl || !amountEl || !typeSelect) return;
 
     const desc = descEl.textContent.trim();
-    const amountText = amountEl.textContent.trim().replace("$", "");
     const type = typeSelect.value;
+
+    const parsed = parseEditableMoneyToNumber(amountEl.textContent);
+    if (parsed === null) {
+        showToast("Invalid amount entered", "error");
+        amountEl.textContent = formatMoney(Number(amountEl.dataset.moneyValue || 0));
+        return;
+    }
 
     row.classList.add("bg-yellow-100");
     row.setAttribute("aria-busy", "true");
 
-    const amount = parseFloat(amountText);
-    if (Number.isNaN(amount)) {
-        row.classList.remove("bg-yellow-100");
-        row.removeAttribute("aria-busy");
-        showToast("Invalid amount entered", "error");
-        return;
-    }
-
     try {
         const res = await fetch(`/update_transaction/${id}`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-            "Content-Type": "application/json",
-            ...csrfHeaders(),
-        },
-        body: JSON.stringify({ description: desc, amount, type }),
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({ description: desc, amount: parsed, type }),
         });
 
         const responseData = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-        row.classList.remove("bg-yellow-100");
-        row.classList.add("bg-red-100");
-        row.removeAttribute("aria-busy");
-        setTimeout(() => row.classList.remove("bg-red-100"), 1000);
+            row.classList.remove("bg-yellow-100");
+            row.classList.add("bg-red-100");
+            row.removeAttribute("aria-busy");
+            setTimeout(() => row.classList.remove("bg-red-100"), 1000);
 
-        const errorMsg = responseData?.message || "Transaction update failed";
-        showToast(errorMsg, "error");
-        if (ariaLiveRegion) ariaLiveRegion.textContent = errorMsg;
-        return;
+            const errorMsg = responseData?.message || "Transaction update failed";
+            showToast(errorMsg, "error");
+            if (ariaLiveRegion) ariaLiveRegion.textContent = errorMsg;
+
+            amountEl.textContent = formatMoney(Number(amountEl.dataset.moneyValue || 0));
+            return;
         }
 
         row.classList.remove("bg-yellow-100");
@@ -356,7 +332,8 @@ function getCsrfToken() {
         row.removeAttribute("aria-busy");
         setTimeout(() => row.classList.remove("bg-green-100"), 1000);
 
-        amountEl.textContent = formatMoney(amount);
+        amountEl.dataset.moneyValue = parsed;
+        amountEl.textContent = formatMoney(parsed);
         applyAmountTypeDataset(amountEl, type);
 
         const successMsg = responseData?.message || "Transaction updated successfully";
@@ -365,6 +342,7 @@ function getCsrfToken() {
 
         await updateChartData();
         await updateSummaryUI();
+        document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
     } catch (err) {
         console.error("Network error updating transaction:", err);
 
@@ -375,13 +353,12 @@ function getCsrfToken() {
 
         showToast("Network error while updating transaction", "error");
         if (ariaLiveRegion) ariaLiveRegion.textContent = "Network error while updating transaction";
-    }
-    }
 
-    /**
-     * Handle add transaction form (no reload)
-     */
-    function handleAddTransactionForm(form) {
+        amountEl.textContent = formatMoney(Number(amountEl.dataset.moneyValue || 0));
+    }
+}
+
+function handleAddTransactionForm(form) {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
@@ -389,72 +366,73 @@ function getCsrfToken() {
         const formData = new FormData(form);
 
         const description = (formData.get("description") || "").trim();
-        const amount = (formData.get("amount") || "").toString().trim();
+        const amountStr = (formData.get("amount") || "").toString().trim();
+        const amountNum = Number.parseFloat(amountStr);
 
-        if (!description || !amount || Number.isNaN(parseFloat(amount))) {
-        showToast("Please provide valid details", "error");
-        return;
+        if (!description || !Number.isFinite(amountNum)) {
+            showToast("Please provide valid details", "error");
+            return;
         }
 
         if (!formData.get("csrf_token") && csrfToken) {
-        formData.append("csrf_token", csrfToken);
+            formData.append("csrf_token", csrfToken);
         }
 
         try {
-        const res = await fetch(form.action, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: csrfHeaders(),
-            body: formData,
-        });
+            const res = await fetch(form.action, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: csrfHeaders(),
+                body: formData,
+            });
 
-        if (!res.ok) {
-            const maybeJson = await res.json().catch(() => null);
-            const msg = maybeJson?.message || "Error adding transaction";
-            showToast(msg, "error");
-            return;
-        }
+            if (!res.ok) {
+                const maybeJson = await res.json().catch(() => null);
+                const msg = maybeJson?.message || "Error adding transaction";
+                showToast(msg, "error");
+                return;
+            }
 
-        const html = await res.text();
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = html;
+            const html = await res.text();
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = html;
 
-        const newRow = tempDiv.querySelector("li[data-id]");
-        const list = document.getElementById("tx-list");
+            const newRow = tempDiv.querySelector("li[data-id]");
+            const list = document.getElementById("tx-list");
 
-        if (!newRow || !list) {
-            showToast("Transaction added but UI could not render the row", "error");
-            return;
-        }
+            if (!newRow || !list) {
+                showToast("Transaction added but UI could not render the row", "error");
+                return;
+            }
 
-        list.appendChild(newRow);
+            const amountEl = newRow.querySelector(".tx-amount");
+            if (amountEl) {
+                amountEl.dataset.moneyValue = amountNum;
+                amountEl.textContent = formatMoney(amountNum);
+            }
 
-        const typeSelect = newRow.querySelector(".tx-type");
-        const amountEl = newRow.querySelector(".tx-amount");
-        if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
+            const typeSelect = newRow.querySelector(".tx-type");
+            if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
 
-        attachRowListeners(newRow);
+            list.appendChild(newRow);
+            attachRowListeners(newRow);
 
-        showToast("Transaction added!", "success");
+            showToast("Transaction added!", "success");
 
-        // Save order so new row gets a proper position relative to UI
-        await persistTransactionOrder(list);
+            await persistTransactionOrder(list);
+            await updateChartData();
+            await updateSummaryUI();
+            document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
 
-        await updateChartData();
-        await updateSummaryUI();
-
-        form.reset();
+            form.reset();
         } catch (err) {
-        console.error("Error adding transaction:", err);
-        showToast("Error adding transaction", "error");
+            console.error("Error adding transaction:", err);
+            showToast("Error adding transaction", "error");
         }
     });
-    }
+}
 
-    /**
-     * Apply dataset types on load for tx rows only
-     */
-    function applyAllTransactionDatasets() {
+function applyAllTransactionDatasets() {
     const list = document.getElementById("tx-list");
     if (!list) return;
 
@@ -463,11 +441,11 @@ function getCsrfToken() {
         const amountEl = row.querySelector(".tx-amount");
         if (typeSelect && amountEl) applyAmountTypeDataset(amountEl, typeSelect.value);
     });
-    }
+}
 
-    function initTransactions() {
+function initTransactions() {
     const list = document.getElementById("tx-list");
-    if (!list) return; // not on this page
+    if (!list) return;
 
     if (!ariaLiveRegion) {
         ariaLiveRegion = document.createElement("div");
@@ -476,7 +454,6 @@ function getCsrfToken() {
         document.body.appendChild(ariaLiveRegion);
     }
 
-    // Only bind to finance transactions rows
     list.querySelectorAll("li[data-id]").forEach((row) => attachRowListeners(row));
     applyAllTransactionDatasets();
 
@@ -485,12 +462,38 @@ function getCsrfToken() {
 
     initTransactionSortable();
     updateSummaryUI();
-    }
 
-    if (document.readyState === "loading") {
+    document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
+}
+
+if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initTransactions);
-    } else {
+} else {
     initTransactions();
 }
+
+document.addEventListener("currency-refresh-ui", () => {
+    const list = document.getElementById("tx-list");
+    if (list) {
+        list.querySelectorAll("li[data-id]").forEach((row) => {
+            const amountEl = row.querySelector(".tx-amount");
+            if (!amountEl) return;
+
+            const raw = Number(amountEl.dataset.moneyValue);
+            if (!Number.isFinite(raw)) return;
+
+            amountEl.textContent = formatMoney(raw);
+        });
+    }
+
+    const ids = ["finance-income", "finance-expense", "finance-balance"];
+    ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const raw = Number(el.dataset.moneyValue);
+        if (!Number.isFinite(raw)) return;
+        el.textContent = formatMoney(raw);
+    });
+});
 
 export { saveTransaction };
