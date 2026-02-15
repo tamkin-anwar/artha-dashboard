@@ -2,7 +2,6 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-<!-- Top Navbar -->
 <header class="w-full px-6 py-4 shadow-md bg-white dark:bg-gray-800" role="banner">
     <div class="flex justify-between items-center">
         <h1 class="text-xl font-bold flex items-center space-x-2">
@@ -20,18 +19,108 @@
         </div>
 
         <nav id="nav-menu" class="hidden md:flex space-x-4 items-center" aria-label="Main navigation">
-            <a href="{{ url_for('logout') }}" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600">Logout</a>
-            <button id="toggle-theme" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600">Toggle Theme</button>
+            <div class="relative">
+                <button
+                    id="settings-btn"
+                    type="button"
+                    class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                >
+                    Settings
+                </button>
+
+                <div
+                    id="settings-dropdown"
+                    class="hidden absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-2 z-50"
+                    role="menu"
+                    aria-label="Settings menu"
+                >
+                    <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        Preferences
+                    </div>
+
+                    <button
+                        id="toggle-theme"
+                        type="button"
+                        class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                        role="menuitem"
+                    >
+                        Toggle theme
+                    </button>
+
+                    <div class="px-3 pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400">
+                        Currency
+                    </div>
+
+                    <select
+                        id="currency-select"
+                        class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                        role="menuitem"
+                        aria-label="Currency"
+                    >
+                        <option value="USD">$ USD</option>
+                        <option value="GBP">£ GBP</option>
+                        <option value="BDT">৳ BDT</option>
+                        <option value="EUR">€ EUR</option>
+                        <option value="CAD">$ CAD</option>
+                        <option value="AUD">$ AUD</option>
+                    </select>
+
+                    <div class="my-2 h-px bg-gray-200 dark:bg-gray-700"></div>
+
+                    <a
+                        href="{{ url_for('logout') }}"
+                        class="block px-3 py-2 rounded-lg text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 transition"
+                        role="menuitem"
+                    >
+                        Logout
+                    </a>
+                </div>
+            </div>
         </nav>
     </div>
 
     <div id="mobile-menu" class="md:hidden mt-2 hidden" aria-label="Mobile navigation">
-        <a href="{{ url_for('logout') }}" class="block px-3 py-1 border border-gray-300 dark:border-gray-600 rounded mb-2">Logout</a>
-        <button id="toggle-theme-mobile" class="w-full px-3 py-1 rounded border border-gray-300 dark:border-gray-600">Toggle Theme</button>
+        <button
+            id="mobile-settings-btn"
+            type="button"
+            class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-left"
+            aria-expanded="false"
+            aria-controls="mobile-settings-panel"
+        >
+            Settings
+        </button>
+
+        <div id="mobile-settings-panel" class="hidden mt-2 space-y-3">
+            <button
+                id="toggle-theme-mobile"
+                type="button"
+                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600"
+            >
+                Toggle theme
+            </button>
+
+            <select
+                id="currency-select-mobile"
+                class="w-full px-3 py-2 rounded bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                aria-label="Currency"
+            >
+                <option value="USD">$ USD</option>
+                <option value="GBP">£ GBP</option>
+                <option value="BDT">৳ BDT</option>
+                <option value="EUR">€ EUR</option>
+                <option value="CAD">$ CAD</option>
+                <option value="AUD">$ AUD</option>
+            </select>
+
+            <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-300 text-center">
+                Logout
+            </a>
+        </div>
     </div>
 </header>
 
-<!-- Main Dashboard -->
 <main class="p-4 sm:p-6" role="main">
     <h1 class="text-xl font-bold mb-6">
         Welcome, {{ current_user.first_name.capitalize() if current_user.first_name else current_user.username.capitalize() }}
@@ -49,7 +138,6 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Dashboard Widgets -->
     <section id="dashboard-widgets" class="dashboard-grid" aria-label="Dashboard widgets">
         <div class="widget" id="widget-finance">
             {% include "widgets/finance.html" %}

@@ -35,6 +35,96 @@ function createErrorBanner() {
     return el;
 }
 
+function initSettingsMenu() {
+    const btn = document.getElementById("settings-btn");
+    const menu = document.getElementById("settings-dropdown");
+
+    const mobileMenuBtn = document.getElementById("menu-btn");
+    const mobileMenu = document.getElementById("mobile-menu");
+
+    const mobileSettingsBtn = document.getElementById("mobile-settings-btn");
+    const mobileSettingsPanel = document.getElementById("mobile-settings-panel");
+
+    const currencySelect = document.getElementById("currency-select");
+    const currencySelectMobile = document.getElementById("currency-select-mobile");
+
+    if (btn && menu) {
+        const closeMenu = () => {
+            menu.classList.add("hidden");
+            btn.setAttribute("aria-expanded", "false");
+        };
+
+        btn.addEventListener("click", () => {
+            const isHidden = menu.classList.contains("hidden");
+            if (isHidden) {
+                menu.classList.remove("hidden");
+                btn.setAttribute("aria-expanded", "true");
+            } else {
+                closeMenu();
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeMenu();
+        });
+    }
+
+    if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener("click", () => {
+            const isHidden = mobileMenu.classList.contains("hidden");
+            if (isHidden) {
+                mobileMenu.classList.remove("hidden");
+                mobileMenuBtn.setAttribute("aria-expanded", "true");
+            } else {
+                mobileMenu.classList.add("hidden");
+                mobileMenuBtn.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    if (mobileSettingsBtn && mobileSettingsPanel) {
+        mobileSettingsBtn.addEventListener("click", () => {
+            const isHidden = mobileSettingsPanel.classList.contains("hidden");
+            if (isHidden) {
+                mobileSettingsPanel.classList.remove("hidden");
+                mobileSettingsBtn.setAttribute("aria-expanded", "true");
+            } else {
+                mobileSettingsPanel.classList.add("hidden");
+                mobileSettingsBtn.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    const savedCurrency = localStorage.getItem("currency") || "USD";
+    if (currencySelect) currencySelect.value = savedCurrency;
+    if (currencySelectMobile) currencySelectMobile.value = savedCurrency;
+
+    const onCurrencyChange = (value) => {
+        localStorage.setItem("currency", value);
+        window.dispatchEvent(new CustomEvent("artha:currency-changed", { detail: { currency: value } }));
+    };
+
+    if (currencySelect) {
+        currencySelect.addEventListener("change", (e) => {
+            const value = e.target.value;
+            if (currencySelectMobile) currencySelectMobile.value = value;
+            onCurrencyChange(value);
+        });
+    }
+
+    if (currencySelectMobile) {
+        currencySelectMobile.addEventListener("change", (e) => {
+            const value = e.target.value;
+            if (currencySelect) currencySelect.value = value;
+            onCurrencyChange(value);
+        });
+    }
+}
+
 async function initDashboardDataWithRetry({ maxRetries = 3, retryDelayMs = 1500 } = {}) {
     let retryCount = 0;
 
@@ -56,6 +146,7 @@ async function initDashboardDataWithRetry({ maxRetries = 3, retryDelayMs = 1500 
 
 async function initDashboard() {
     initWidgetSorting();
+    initSettingsMenu();
     await registerServiceWorker();
 
     const loadingIndicator = createLoadingIndicator();
