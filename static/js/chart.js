@@ -1,27 +1,26 @@
 // static/js/chart.js
 import { onThemeChange, getCurrentTheme } from "./theme.js";
+import { formatMoney } from "./currency.js";
 
 export let financeChartInstance = null;
 export let financeChartData = { income: 0, expense: 0 };
 
-// Utility: get CSS variable value from :root or .dark
 function getCSSVariable(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    }
+}
 
-    function getLegendColor() {
+function getLegendColor() {
     const cssColor = getCSSVariable("--legend-color");
     if (cssColor) return cssColor;
     const theme = getCurrentTheme();
     return theme === "dark" ? "#fff" : "#000";
-    }
+}
 
-    /**
-     * Ensure canvas internal buffer matches CSS size * devicePixelRatio.
-     * This is the main fix for blurry/pixelated charts on retina and when CSS scales the canvas.
-     * Chart.js will also handle DPR, but we sync here for the spinner + any manual drawing.
-     */
-    function syncCanvasSize(canvas) {
+/**
+ * Canvas DPR sync for manual drawing (spinner and fallback text).
+ * Chart.js handles DPR internally, but we keep this for crisp manual drawing.
+ */
+function syncCanvasSize(canvas) {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -32,33 +31,15 @@ function getCSSVariable(name) {
     const internalWidth = Math.max(1, Math.floor(cssWidth * dpr));
     const internalHeight = Math.max(1, Math.floor(cssHeight * dpr));
 
-    // Make sure the element keeps the CSS size while the buffer is DPR-scaled
     if (canvas.style.width !== `${cssWidth}px`) canvas.style.width = `${cssWidth}px`;
     if (canvas.style.height !== `${cssHeight}px`) canvas.style.height = `${cssHeight}px`;
 
-    // Only update if needed to avoid flicker
     if (canvas.width !== internalWidth) canvas.width = internalWidth;
     if (canvas.height !== internalHeight) canvas.height = internalHeight;
-    }
+}
 
-    function safeRegisterDatalabels() {
-    try {
-        if (typeof Chart !== "undefined" && typeof ChartDataLabels !== "undefined") {
-        if (!Chart.registry?.plugins?.get?.("datalabels")) {
-            Chart.register(ChartDataLabels);
-        }
-        }
-    } catch (e) {
-        // Ignore; plugin still can be passed via config
-    }
-    }
-
-    /**
-     * Reset any transforms and scale the 2D context for DPR-correct manual drawing.
-     * For Chart.js, it manages its own scaling, but we use this for spinner/fallback text.
-     */
-    function prepare2dForDpr(canvas, ctx) {
-    if (!canvas || !ctx) return;
+function prepare2dForDpr(canvas, ctx) {
+    if (!canvas || !ctx) return null;
 
     const rect = canvas.getBoundingClientRect();
     const cssWidth = Math.max(1, Math.floor(rect.width));
@@ -68,11 +49,10 @@ function getCSSVariable(name) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
-    // Return CSS-space dimensions for drawing (not internal buffer)
     return { cssWidth, cssHeight };
-    }
+}
 
-    function drawFallbackMessage(canvas, message) {
+function drawFallbackMessage(canvas, message) {
     if (!canvas?.getContext) return;
 
     syncCanvasSize(canvas);
@@ -87,10 +67,46 @@ function getCSSVariable(name) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(message, dims.cssWidth / 2, dims.cssHeight / 2);
-    }
+}
 
-    // Initialize the Chart.js doughnut chart
-    export function initFinanceChart(ctx, income, expense) {
+function safeRegisterDatalabels() {
+    try {
+        if (typeof Chart !== "undefined" && typeof ChartDataLabels !== "undefined") {
+            if (!Chart.registry?.plugins?.get?.("datalabels")) {
+                Chart.register(ChartDataLabels);
+            }
+        }
+    } catch {
+        // ignore
+    }
+}
+
+function getChartThemeOptions() {
+    const legendColor = getLegendColor();
+    const bg = getCSSVariable("--bg-color") || (getCurrentTheme() === "dark" ? "#111827" : "#ffffff");
+    const tooltipBg = getCSSVariable("--tooltip-bg") || bg;
+
+    return { legendColor, tooltipBg };
+}
+
+function makeMoneyNumber(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function buildTooltipLabel(ctx) {
+    const label = ctx.label ? `${ctx.label}: ` : "";
+    const value = makeMoneyNumber(ctx.parsed);
+    return `${label}${formatMoney(value)}`;
+}
+
+function buildDatalabel(value) {
+    const num = makeMoneyNumber(value);
+    return formatMoney(num);
+}
+
+// Initialize the Chart.js doughnut chart
+export function initFinanceChart(ctx, income, expense) {
     const canvas = ctx?.canvas || ctx;
 
     if (!canvas || !canvas.getContext) {
@@ -98,7 +114,6 @@ function getCSSVariable(name) {
         return;
     }
 
-    // Ensure crisp canvas before Chart.js lays out
     syncCanvasSize(canvas);
 
     if (typeof Chart === "undefined") {
@@ -112,8 +127,8 @@ function getCSSVariable(name) {
 
     const incomeColor = getCSSVariable("--income-color") || "#10b981";
     const expenseColor = getCSSVariable("--expense-color") || "#ef4444";
+    const { legendColor, tooltipBg } = getChartThemeOptions();
 
-    // Destroy existing chart instance to avoid duplicates
     if (financeChartInstance) {
         financeChartInstance.destroy();
         financeChartInstance = null;
@@ -122,49 +137,49 @@ function getCSSVariable(name) {
     financeChartInstance = new Chart(canvas, {
         type: "doughnut",
         data: {
-        labels: ["Income", "Expense"],
-        datasets: [
-            {
-            data: [income, expense],
-            backgroundColor: [incomeColor, expenseColor],
-            borderColor: "#000000",
-            borderWidth: 2,
-            },
-        ],
+            labels: ["Income", "Expense"],
+            datasets: [
+                {
+                    data: [income, expense],
+                    backgroundColor: [incomeColor, expenseColor],
+                    borderColor: "#000000",
+                    borderWidth: 2,
+                },
+            ],
         },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
-
-        // Force Chart.js to use device pixel ratio correctly
-        devicePixelRatio: window.devicePixelRatio || 1,
-
-        plugins: {
-            legend: {
-            labels: { color: getLegendColor() },
+            responsive: true,
+            maintainAspectRatio: false,
+            devicePixelRatio: window.devicePixelRatio || 1,
+            plugins: {
+                legend: {
+                    labels: { color: legendColor },
+                },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: legendColor,
+                    bodyColor: legendColor,
+                    callbacks: {
+                        label: buildTooltipLabel,
+                    },
+                },
+                datalabels: {
+                    color: legendColor,
+                    formatter: (value) => buildDatalabel(value),
+                },
             },
-            datalabels: {
-            color: getLegendColor(),
-            },
-            tooltip: {
-            titleColor: getLegendColor(),
-            bodyColor: getLegendColor(),
-            backgroundColor: getCSSVariable("--bg-color") || "#fff",
-            },
-        },
         },
         plugins: typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : [],
     });
-    }
+}
 
-    // Update the chart data dynamically
-    export function updateFinanceChart(income, expense) {
+// Update the chart data dynamically
+export function updateFinanceChart(income, expense) {
     financeChartData = { income, expense };
 
     const canvas = document.getElementById("financeChart");
     if (!canvas) return;
 
-    // Keep canvas buffer synced, especially after layout changes
     syncCanvasSize(canvas);
 
     if (typeof Chart === "undefined") {
@@ -179,15 +194,24 @@ function getCSSVariable(name) {
 
     financeChartInstance.data.datasets[0].data = [income, expense];
     financeChartInstance.data.datasets[0].borderColor = "#000000";
-
-    // If DPR changed (zoom, screen move), keep Chart.js aligned
     financeChartInstance.options.devicePixelRatio = window.devicePixelRatio || 1;
 
-    financeChartInstance.update();
+    const { legendColor, tooltipBg } = getChartThemeOptions();
+    financeChartInstance.options.plugins.legend.labels.color = legendColor;
+    financeChartInstance.options.plugins.tooltip.titleColor = legendColor;
+    financeChartInstance.options.plugins.tooltip.bodyColor = legendColor;
+    financeChartInstance.options.plugins.tooltip.backgroundColor = tooltipBg;
+
+    if (financeChartInstance.options.plugins.datalabels) {
+        financeChartInstance.options.plugins.datalabels.color = legendColor;
+        financeChartInstance.options.plugins.datalabels.formatter = (value) => buildDatalabel(value);
     }
 
-    // Draw loading spinner on the canvas
-    function drawSpinner(canvas, frame = 0) {
+    financeChartInstance.update();
+}
+
+// Draw loading spinner on the canvas
+function drawSpinner(canvas, frame = 0) {
     if (!canvas?.getContext) return;
 
     syncCanvasSize(canvas);
@@ -211,19 +235,18 @@ function getCSSVariable(name) {
     ctx.lineWidth = 4;
     ctx.stroke();
     ctx.restore();
-    }
+}
 
-    let currentAbortController = null;
+let currentAbortController = null;
 
-    // Fetch new chart data and update chart
-    export async function updateChartData() {
+// Fetch new chart data and update chart
+export async function updateChartData() {
     const canvas = document.getElementById("financeChart");
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Keep crisp while loading
     syncCanvasSize(canvas);
 
     if (typeof Chart === "undefined") {
@@ -245,39 +268,39 @@ function getCSSVariable(name) {
         if (scenarioId) endpoint += `?scenario_id=${encodeURIComponent(scenarioId)}`;
 
         const res = await fetch(endpoint, {
-        signal: currentAbortController.signal,
-        headers: { "X-Requested-With": "XMLHttpRequest" },
+            signal: currentAbortController.signal,
+            headers: { "X-Requested-With": "XMLHttpRequest" },
         });
 
         if (!res.ok) throw new Error("Network response was not ok");
 
         const data = await res.json();
         if (typeof data.income !== "number" || typeof data.expense !== "number") {
-        throw new Error("Invalid data format");
+            throw new Error("Invalid data format");
         }
 
         updateFinanceChart(data.income, data.expense);
     } catch (err) {
         if (err.name !== "AbortError") {
-        console.error("Failed to update chart:", err);
-        drawFallbackMessage(canvas, "Failed to load chart");
+            console.error("Failed to update chart:", err);
+            drawFallbackMessage(canvas, "Failed to load chart");
         }
     } finally {
         clearInterval(spinnerInterval);
     }
-    }
+}
 
-    // Reinitialize chart if DOM replaced
-    export function ensureChartIntegrity() {
+// Reinitialize chart if DOM replaced
+export function ensureChartIntegrity() {
     const canvas = document.getElementById("financeChart");
     if (canvas && !financeChartInstance) {
         initFinanceChart(canvas.getContext("2d"), financeChartData.income, financeChartData.expense);
     }
-    }
+}
 
-    // Keep chart crisp on resize and zoom changes
-    let resizeTimeout = null;
-    window.addEventListener("resize", () => {
+// Keep chart crisp on resize and zoom changes
+let resizeTimeout = null;
+window.addEventListener("resize", () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
         const canvas = document.getElementById("financeChart");
@@ -286,34 +309,50 @@ function getCSSVariable(name) {
         syncCanvasSize(canvas);
 
         if (financeChartInstance) {
-        financeChartInstance.options.devicePixelRatio = window.devicePixelRatio || 1;
-        financeChartInstance.resize();
-        financeChartInstance.update();
+            financeChartInstance.options.devicePixelRatio = window.devicePixelRatio || 1;
+            financeChartInstance.resize();
+            financeChartInstance.update();
         }
     }, 150);
-    });
+});
 
-    // Debounced theme change handler to update colors smoothly
-    let themeUpdateTimeout = null;
-    onThemeChange(() => {
+// Theme change
+let themeUpdateTimeout = null;
+onThemeChange(() => {
     clearTimeout(themeUpdateTimeout);
     themeUpdateTimeout = setTimeout(() => {
         if (!financeChartInstance) return;
 
-        const newColor = getLegendColor();
-        financeChartInstance.options.plugins.legend.labels.color = newColor;
+        const { legendColor, tooltipBg } = getChartThemeOptions();
+
+        financeChartInstance.options.plugins.legend.labels.color = legendColor;
+        financeChartInstance.options.plugins.tooltip.titleColor = legendColor;
+        financeChartInstance.options.plugins.tooltip.bodyColor = legendColor;
+        financeChartInstance.options.plugins.tooltip.backgroundColor = tooltipBg;
 
         if (financeChartInstance.options.plugins.datalabels) {
-        financeChartInstance.options.plugins.datalabels.color = newColor;
+            financeChartInstance.options.plugins.datalabels.color = legendColor;
         }
-
-        financeChartInstance.options.plugins.tooltip.titleColor = newColor;
-        financeChartInstance.options.plugins.tooltip.bodyColor = newColor;
 
         financeChartInstance.update();
     }, 100);
-    });
+});
 
-    export function getFinanceChartData() {
+// Currency refresh
+document.addEventListener("currency-refresh-ui", () => {
+    if (!financeChartInstance) return;
+
+    if (financeChartInstance.options.plugins.datalabels) {
+        financeChartInstance.options.plugins.datalabels.formatter = (value) => buildDatalabel(value);
+    }
+
+    financeChartInstance.options.plugins.tooltip.callbacks = {
+        label: buildTooltipLabel,
+    };
+
+    financeChartInstance.update();
+});
+
+export function getFinanceChartData() {
     return { ...financeChartData };
 }
