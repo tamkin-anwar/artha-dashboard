@@ -105,36 +105,14 @@ function buildDatalabel(value) {
     return formatMoney(num);
 }
 
-const centerBalancePlugin = {
-    id: "centerBalancePlugin",
-    afterDraw(chart) {
-        const meta = chart.getDatasetMeta(0);
-        if (!meta?.data?.length) return;
+function updateCenterLabel() {
+    const titleEl = document.getElementById("chart-center-title");
+    const valueEl = document.getElementById("chart-center-value");
+    if (!titleEl || !valueEl) return;
 
-        const arc = meta.data[0];
-        const x = arc.x;
-        const y = arc.y;
-        const ctx = chart.ctx;
-
-        const balanceLabelColor = getLegendColor();
-        const balanceValueColor = getCSSVariable("--balance-color") || "#2563eb";
-        const formattedBalance = formatMoney(getBalance());
-
-        ctx.save();
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        ctx.fillStyle = balanceLabelColor;
-        ctx.font = "700 14px Arial, sans-serif";
-        ctx.fillText("Balance", x, y - 14);
-
-        ctx.fillStyle = balanceValueColor;
-        ctx.font = "700 17px Arial, sans-serif";
-        ctx.fillText(formattedBalance, x, y + 12);
-
-        ctx.restore();
-    },
-};
+    titleEl.textContent = "Balance";
+    valueEl.textContent = formatMoney(getBalance());
+}
 
 export function initFinanceChart(ctx, income, expense) {
     const canvas = ctx?.canvas || ctx;
@@ -154,6 +132,7 @@ export function initFinanceChart(ctx, income, expense) {
     safeRegisterDatalabels();
 
     financeChartData = { income, expense };
+    updateCenterLabel();
 
     const incomeColor = getCSSVariable("--income-color") || "#10b981";
     const expenseColor = getCSSVariable("--expense-color") || "#ef4444";
@@ -212,15 +191,13 @@ export function initFinanceChart(ctx, income, expense) {
                 },
             },
         },
-        plugins: [
-            ...(typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : []),
-            centerBalancePlugin,
-        ],
+        plugins: typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : [],
     });
 }
 
 export function updateFinanceChart(income, expense) {
     financeChartData = { income, expense };
+    updateCenterLabel();
 
     const canvas = document.getElementById("financeChart");
     if (!canvas) return;
@@ -361,6 +338,8 @@ window.addEventListener("resize", () => {
             financeChartInstance.resize();
             financeChartInstance.update();
         }
+
+        updateCenterLabel();
     }, 150);
 });
 
@@ -382,6 +361,7 @@ onThemeChange(() => {
         }
 
         financeChartInstance.update();
+        updateCenterLabel();
     }, 100);
 });
 
@@ -404,6 +384,7 @@ document.addEventListener("currency-refresh-ui", () => {
     };
 
     financeChartInstance.update();
+    updateCenterLabel();
 });
 
 export function getFinanceChartData() {

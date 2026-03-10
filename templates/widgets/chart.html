@@ -5,6 +5,27 @@
 
     <div class="relative h-72">
         <canvas id="financeChart" class="absolute inset-0 w-full h-full block"></canvas>
+
+        <div
+            id="chart-center-label"
+            class="absolute inset-0 flex items-center justify-center pointer-events-none"
+            aria-hidden="true"
+        >
+            <div class="text-center leading-tight">
+                <div
+                    id="chart-center-title"
+                    class="text-sm font-semibold tracking-tight text-gray-700 dark:text-gray-200"
+                >
+                    Balance
+                </div>
+                <div
+                    id="chart-center-value"
+                    class="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400"
+                >
+                    $0.00
+                </div>
+            </div>
+        </div>
     </div>
 
     <p id="chart-text" class="mt-3 chart-text">
