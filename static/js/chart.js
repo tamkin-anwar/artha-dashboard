@@ -16,10 +16,6 @@ function getLegendColor() {
     return theme === "dark" ? "#fff" : "#000";
 }
 
-/**
- * Canvas DPR sync for manual drawing (spinner and fallback text).
- * Chart.js handles DPR internally, but we keep this for crisp manual drawing.
- */
 function syncCanvasSize(canvas) {
     if (!canvas) return;
 
@@ -94,6 +90,10 @@ function makeMoneyNumber(value) {
     return Number.isFinite(num) ? num : 0;
 }
 
+function getBalance() {
+    return makeMoneyNumber(financeChartData.income) - makeMoneyNumber(financeChartData.expense);
+}
+
 function buildTooltipLabel(ctx) {
     const label = ctx.label ? `${ctx.label}: ` : "";
     const value = makeMoneyNumber(ctx.parsed);
@@ -105,7 +105,37 @@ function buildDatalabel(value) {
     return formatMoney(num);
 }
 
-// Initialize the Chart.js doughnut chart
+const centerBalancePlugin = {
+    id: "centerBalancePlugin",
+    afterDraw(chart) {
+        const meta = chart.getDatasetMeta(0);
+        if (!meta?.data?.length) return;
+
+        const arc = meta.data[0];
+        const x = arc.x;
+        const y = arc.y;
+        const ctx = chart.ctx;
+
+        const balanceLabelColor = getLegendColor();
+        const balanceValueColor = getCSSVariable("--balance-color") || "#2563eb";
+        const formattedBalance = formatMoney(getBalance());
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = balanceLabelColor;
+        ctx.font = "600 14px Arial";
+        ctx.fillText("Balance", x, y - 14);
+
+        ctx.fillStyle = balanceValueColor;
+        ctx.font = "700 16px Arial";
+        ctx.fillText(formattedBalance, x, y + 12);
+
+        ctx.restore();
+    },
+};
+
 export function initFinanceChart(ctx, income, expense) {
     const canvas = ctx?.canvas || ctx;
 
@@ -144,6 +174,7 @@ export function initFinanceChart(ctx, income, expense) {
                     backgroundColor: [incomeColor, expenseColor],
                     borderColor: "#000000",
                     borderWidth: 2,
+                    hoverOffset: 6,
                 },
             ],
         },
@@ -151,6 +182,10 @@ export function initFinanceChart(ctx, income, expense) {
             responsive: true,
             maintainAspectRatio: false,
             devicePixelRatio: window.devicePixelRatio || 1,
+            cutout: "52%",
+            layout: {
+                padding: 8,
+            },
             plugins: {
                 legend: {
                     labels: { color: legendColor },
@@ -166,14 +201,19 @@ export function initFinanceChart(ctx, income, expense) {
                 datalabels: {
                     color: legendColor,
                     formatter: (value) => buildDatalabel(value),
+                    font: {
+                        weight: "600",
+                    },
                 },
             },
         },
-        plugins: typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : [],
+        plugins: [
+            ...(typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : []),
+            centerBalancePlugin,
+        ],
     });
 }
 
-// Update the chart data dynamically
 export function updateFinanceChart(income, expense) {
     financeChartData = { income, expense };
 
@@ -210,7 +250,6 @@ export function updateFinanceChart(income, expense) {
     financeChartInstance.update();
 }
 
-// Draw loading spinner on the canvas
 function drawSpinner(canvas, frame = 0) {
     if (!canvas?.getContext) return;
 
@@ -239,7 +278,6 @@ function drawSpinner(canvas, frame = 0) {
 
 let currentAbortController = null;
 
-// Fetch new chart data and update chart
 export async function updateChartData() {
     const canvas = document.getElementById("financeChart");
     if (!canvas) return;
@@ -290,7 +328,6 @@ export async function updateChartData() {
     }
 }
 
-// Reinitialize chart if DOM replaced
 export function ensureChartIntegrity() {
     const canvas = document.getElementById("financeChart");
     if (canvas && !financeChartInstance) {
@@ -298,7 +335,6 @@ export function ensureChartIntegrity() {
     }
 }
 
-// Keep chart crisp on resize and zoom changes
 let resizeTimeout = null;
 window.addEventListener("resize", () => {
     clearTimeout(resizeTimeout);
@@ -316,7 +352,6 @@ window.addEventListener("resize", () => {
     }, 150);
 });
 
-// Theme change
 let themeUpdateTimeout = null;
 onThemeChange(() => {
     clearTimeout(themeUpdateTimeout);
@@ -338,7 +373,6 @@ onThemeChange(() => {
     }, 100);
 });
 
-// Currency refresh
 document.addEventListener("currency-refresh-ui", () => {
     if (!financeChartInstance) return;
 
