@@ -4,29 +4,27 @@
     <form
         method="POST"
         action="{{ url_for('add_transaction') }}"
-        class="mb-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+        class="mb-5 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center pb-4 border-b border-gray-200/70 dark:border-gray-600/60"
         autocomplete="off"
     >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <!-- Description -->
         <input
             type="text"
             name="description"
             placeholder="Description"
             required
-            class="w-full min-w-0 sm:col-span-3 h-12 px-4 rounded-lg
+            class="w-full min-w-0 sm:col-span-4 h-11 px-4 rounded-lg
                     border border-gray-300 dark:border-gray-700
-                    bg-white dark:bg-gray-900 text-black dark:text-white text-base
+                    bg-white dark:bg-gray-900 text-black dark:text-white text-sm
                     placeholder-gray-500 dark:placeholder-gray-400
                     focus:outline-none focus:ring-2 focus:ring-blue-500/60"
         >
 
-        <!-- Amount -->
-        <div class="relative w-full min-w-0 sm:col-span-4">
+        <div class="relative w-full min-w-0 sm:col-span-3">
             <span
                 class="absolute inset-y-0 left-0 pl-4 flex items-center
-                        text-gray-500 dark:text-gray-400 h-12"
+                        text-gray-500 dark:text-gray-400 h-11 text-sm"
                 data-currency-symbol
             >$</span>
 
@@ -37,32 +35,30 @@
                 step="0.01"
                 inputmode="decimal"
                 required
-                class="w-full min-w-0 h-12 pl-9 pr-4 rounded-lg
+                class="w-full min-w-0 h-11 pl-9 pr-4 rounded-lg
                         border border-gray-300 dark:border-gray-700
-                        bg-white dark:bg-gray-900 text-black dark:text-white text-base
+                        bg-white dark:bg-gray-900 text-black dark:text-white text-sm
                         placeholder-gray-500 dark:placeholder-gray-400
                         focus:outline-none focus:ring-2 focus:ring-blue-500/60"
             >
         </div>
 
-        <!-- Type -->
         <select
             name="type"
             required
-            class="w-full min-w-0 sm:col-span-3 h-12 px-4 rounded-lg
+            class="w-full min-w-0 sm:col-span-3 h-11 px-4 rounded-lg
                     border border-gray-300 dark:border-gray-700
-                    bg-white dark:bg-gray-900 text-black dark:text-white text-base
+                    bg-white dark:bg-gray-900 text-black dark:text-white text-sm
                     focus:outline-none focus:ring-2 focus:ring-blue-500/60"
         >
             <option value="income">Income</option>
             <option value="expense">Expense</option>
         </select>
 
-        <!-- Add -->
         <button
             type="submit"
-            class="w-full sm:col-span-2 h-12 px-6 rounded-lg
-                    bg-blue-600 text-white font-semibold text-base
+            class="w-full sm:col-span-2 h-11 px-5 rounded-lg
+                    bg-blue-600 text-white font-semibold text-sm
                     hover:bg-blue-700 transition
                     flex items-center justify-center whitespace-nowrap"
         >
@@ -80,7 +76,7 @@
         {% endfor %}
     </ul>
 
-    <div class="mt-4 text-sm text-legend">
+    <div class="mt-4 pt-4 border-t border-gray-200/70 dark:border-gray-600/60 text-sm text-legend space-y-1">
         <p>💰 Income:
             <strong
                 id="finance-income"
