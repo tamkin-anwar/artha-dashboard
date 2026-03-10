@@ -20,15 +20,15 @@ function syncCanvasSize(canvas) {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const cssWidth = Math.max(1, Math.floor(rect.width));
-    const cssHeight = Math.max(1, Math.floor(rect.height));
+    const cssWidth = Math.max(1, rect.width);
+    const cssHeight = Math.max(1, rect.height);
 
     const dpr = window.devicePixelRatio || 1;
-    const internalWidth = Math.max(1, Math.floor(cssWidth * dpr));
-    const internalHeight = Math.max(1, Math.floor(cssHeight * dpr));
+    const internalWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const internalHeight = Math.max(1, Math.round(cssHeight * dpr));
 
-    if (canvas.style.width !== `${cssWidth}px`) canvas.style.width = `${cssWidth}px`;
-    if (canvas.style.height !== `${cssHeight}px`) canvas.style.height = `${cssHeight}px`;
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
 
     if (canvas.width !== internalWidth) canvas.width = internalWidth;
     if (canvas.height !== internalHeight) canvas.height = internalHeight;
@@ -38,8 +38,8 @@ function prepare2dForDpr(canvas, ctx) {
     if (!canvas || !ctx) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const cssWidth = Math.max(1, Math.floor(rect.width));
-    const cssHeight = Math.max(1, Math.floor(rect.height));
+    const cssWidth = Math.max(1, rect.width);
+    const cssHeight = Math.max(1, rect.height);
     const dpr = window.devicePixelRatio || 1;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -58,7 +58,7 @@ function drawFallbackMessage(canvas, message) {
     if (!dims) return;
 
     ctx.clearRect(0, 0, dims.cssWidth, dims.cssHeight);
-    ctx.font = "14px Arial";
+    ctx.font = "14px Arial, sans-serif";
     ctx.fillStyle = getLegendColor();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -125,11 +125,11 @@ const centerBalancePlugin = {
         ctx.textBaseline = "middle";
 
         ctx.fillStyle = balanceLabelColor;
-        ctx.font = "600 14px Arial";
+        ctx.font = "700 14px Arial, sans-serif";
         ctx.fillText("Balance", x, y - 14);
 
         ctx.fillStyle = balanceValueColor;
-        ctx.font = "700 16px Arial";
+        ctx.font = "700 17px Arial, sans-serif";
         ctx.fillText(formattedBalance, x, y + 12);
 
         ctx.restore();
@@ -182,6 +182,7 @@ export function initFinanceChart(ctx, income, expense) {
             responsive: true,
             maintainAspectRatio: false,
             devicePixelRatio: window.devicePixelRatio || 1,
+            animation: false,
             cutout: "52%",
             layout: {
                 padding: 8,
@@ -202,8 +203,12 @@ export function initFinanceChart(ctx, income, expense) {
                     color: legendColor,
                     formatter: (value) => buildDatalabel(value),
                     font: {
-                        weight: "600",
+                        size: 13,
+                        weight: "700",
+                        family: "Arial, sans-serif",
                     },
+                    textStrokeColor: "rgba(0,0,0,0.15)",
+                    textStrokeWidth: 0.5,
                 },
             },
         },
@@ -245,6 +250,13 @@ export function updateFinanceChart(income, expense) {
     if (financeChartInstance.options.plugins.datalabels) {
         financeChartInstance.options.plugins.datalabels.color = legendColor;
         financeChartInstance.options.plugins.datalabels.formatter = (value) => buildDatalabel(value);
+        financeChartInstance.options.plugins.datalabels.font = {
+            size: 13,
+            weight: "700",
+            family: "Arial, sans-serif",
+        };
+        financeChartInstance.options.plugins.datalabels.textStrokeColor = "rgba(0,0,0,0.15)";
+        financeChartInstance.options.plugins.datalabels.textStrokeWidth = 0.5;
     }
 
     financeChartInstance.update();
@@ -378,6 +390,13 @@ document.addEventListener("currency-refresh-ui", () => {
 
     if (financeChartInstance.options.plugins.datalabels) {
         financeChartInstance.options.plugins.datalabels.formatter = (value) => buildDatalabel(value);
+        financeChartInstance.options.plugins.datalabels.font = {
+            size: 13,
+            weight: "700",
+            family: "Arial, sans-serif",
+        };
+        financeChartInstance.options.plugins.datalabels.textStrokeColor = "rgba(0,0,0,0.15)";
+        financeChartInstance.options.plugins.datalabels.textStrokeWidth = 0.5;
     }
 
     financeChartInstance.options.plugins.tooltip.callbacks = {
