@@ -255,12 +255,18 @@ def register():
             flash("Username and password are required.", "error")
             return redirect(url_for("register"))
 
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.", "error")
+            return redirect(url_for("register"))
+
         if User.query.filter_by(username=username).first():
             flash("Username already exists.", "error")
             return redirect(url_for("register"))
 
         new_user = User(username=username, first_name=first_name or None)
         new_user.set_password(password)
+
+
 
         try:
             db.session.add(new_user)
@@ -274,6 +280,7 @@ def register():
             return redirect(url_for("register"))
 
     return render_template("register.html")
+
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -292,6 +299,46 @@ def login():
 
     return render_template("login.html")
 
+@app.route("/change_password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not current_password or not new_password or not confirm_password:
+            flash("All password fields are required.", "error")
+            return redirect(url_for("change_password"))
+
+        if not current_user.check_password(current_password):
+            flash("Current password is incorrect.", "error")
+            return redirect(url_for("change_password"))
+
+        if len(new_password) < 8:
+            flash("New password must be at least 8 characters.", "error")
+            return redirect(url_for("change_password"))
+
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "error")
+            return redirect(url_for("change_password"))
+
+        if current_user.check_password(new_password):
+            flash("New password must be different from the current password.", "error")
+            return redirect(url_for("change_password"))
+
+        try:
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash("Password changed successfully.", "success")
+            return redirect(url_for("index"))
+        except Exception as e:
+            db.session.rollback()
+            log.error("Error changing password: %s", e, exc_info=True)
+            flash("Error changing password.", "error")
+            return redirect(url_for("change_password"))
+
+    return render_template("change_password.html")
 
 @app.route("/logout")
 @login_required
