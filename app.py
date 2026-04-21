@@ -134,7 +134,9 @@ def validate_amount(amount_str: str) -> float:
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     first_name = db.Column(db.String(80), nullable=True)
+    last_name = db.Column(db.String(80), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
 
     def set_password(self, password: str) -> None:
@@ -248,11 +250,13 @@ def index():
 def register():
     if request.method == "POST":
         first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        if not username or not password:
-            flash("Username and password are required.", "error")
+        if not username or not password or not email:
+            flash("Email, username, and password are required.", "error")
             return redirect(url_for("register"))
 
         if len(password) < 8:
@@ -263,7 +267,16 @@ def register():
             flash("Username already exists.", "error")
             return redirect(url_for("register"))
 
-        new_user = User(username=username, first_name=first_name or None)
+        if User.query.filter_by(email=email).first():
+            flash("Email already exists.", "error")
+            return redirect(url_for("register"))
+
+        new_user = User(
+            username=username,
+            email=email,
+            first_name=first_name or None,
+            last_name=last_name or None,
+        )
         new_user.set_password(password)
 
 
