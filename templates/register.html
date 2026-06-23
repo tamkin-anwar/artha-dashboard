@@ -40,7 +40,7 @@
                 {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('register') }}" class="space-y-4" role="form">
+            <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-4" role="form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <label for="first_name" class="sr-only">First Name</label>
@@ -105,7 +105,7 @@
 
             <p class="text-center text-sm mt-5 text-slate-300">
                 Already have an account?
-                <a href="{{ url_for('login') }}" class="auth-link">
+                <a href="{{ url_for('auth.login') }}" class="auth-link">
                     Login here
                 </a>
             </p>

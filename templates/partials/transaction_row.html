@@ -10,7 +10,7 @@
     </button>
 
     <form method="POST"
-            action="{{ url_for('update_transaction', transaction_id=tx.id) }}"
+            action="{{ url_for('finance.update_transaction', transaction_id=tx.id) }}"
             class="flex-grow flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -40,7 +40,7 @@
 
     <form class="tx-delete-form"
             method="POST"
-            action="{{ url_for('delete_transaction', transaction_id=tx.id) }}">
+            action="{{ url_for('finance.delete_transaction', transaction_id=tx.id) }}">
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

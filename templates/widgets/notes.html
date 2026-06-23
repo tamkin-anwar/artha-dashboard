@@ -2,7 +2,7 @@
 <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
     <h2 class="text-lg font-semibold mb-2 text-black dark:text-white">📝 Notes</h2>
 
-    <form method="POST" class="space-y-2" action="{{ url_for('index') }}">
+    <form method="POST" class="space-y-2" action="{{ url_for('dashboard.index') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <textarea
@@ -44,7 +44,7 @@
 
             <form class="note-delete-form"
                     method="POST"
-                    action="{{ url_for('delete_note', note_id=note.id) }}">
+                    action="{{ url_for('notes.delete_note', note_id=note.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit"
                         class="text-red-500 hover:text-red-700 text-xl leading-none"
