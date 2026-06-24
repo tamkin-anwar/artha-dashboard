@@ -64,11 +64,11 @@ def create_app(config_name: str = "default") -> Flask:
     # ------------------------------------------------------------------
     # Blueprints
     # ------------------------------------------------------------------
-    from .services.blueprints.auth import auth_bp
-    from .services.blueprints.dashboard import dashboard_bp
-    from .services.blueprints.notes import notes_bp
-    from .services.blueprints.finance import finance_bp
-    from .services.blueprints.ai import ai_bp
+    from .blueprints.auth import auth_bp
+    from .blueprints.dashboard import dashboard_bp
+    from .blueprints.notes import notes_bp
+    from .blueprints.finance import finance_bp
+    from .blueprints.ai import ai_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
