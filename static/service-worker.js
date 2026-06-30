@@ -1,6 +1,6 @@
 // static/service-worker.js
 
-const CACHE_NAME = "artha-cache-v5";
+const CACHE_NAME = "artha-cache-v6";
 const OFFLINE_URL = "/static/offline.html";
 
 const ASSETS_TO_CACHE = [
@@ -33,6 +33,8 @@ const ASSETS_TO_CACHE = [
     "/static/js/transactions.js",
     "/static/js/calculator.js",
     "/static/js/theme.js",
+    "/static/js/settings.js",
+    "/static/js/ai.js",
     "/static/js/chart.js",
     "/static/js/widgets.js",
     "/static/js/toast.js",

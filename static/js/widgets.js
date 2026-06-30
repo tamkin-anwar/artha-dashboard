@@ -103,21 +103,57 @@ function ensureDragZones(container) {
     });
 }
 
+/**
+ * Merge the saved drag order with the widgets actually present in the DOM.
+ *
+ * Why this exists: previously, any widget id missing from savedOrder
+ * (e.g. a newly added widget that didn't exist when the order was last
+ * saved) got left out of the reorder loop entirely — and because the loop
+ * moved every *known* widget to the end of the container one at a time,
+ * the untouched new widget ended up shoved to the front instead of
+ * staying in its natural template position. Adding a widget would visibly
+ * scramble the whole dashboard.
+ *
+ * Fix: known widgets keep their saved relative order; any widget not yet
+ * in savedOrder is appended after them, in its original template order.
+ * This guarantees no widget ever disappears or jumps to an unexpected
+ * position when new widgets are introduced.
+ */
+function resolveWidgetOrder(container) {
+    const savedOrder = JSON.parse(localStorage.getItem("widgetOrder")) || [];
+
+    const currentIds = Array.from(container.children)
+        .filter((el) => el.classList && el.classList.contains("widget"))
+        .map((el) => el.id)
+        .filter(Boolean);
+
+    const knownIds = savedOrder.filter((id) => currentIds.includes(id));
+    const newIds   = currentIds.filter((id) => !knownIds.includes(id));
+
+    return [...knownIds, ...newIds];
+}
+
+function applyWidgetOrder(container, order) {
+    const widgetMap = {};
+    Array.from(container.children).forEach((widget) => {
+        if (widget.id) widgetMap[widget.id] = widget;
+    });
+
+    order.forEach((id) => {
+        if (widgetMap[id]) container.appendChild(widgetMap[id]);
+    });
+}
+
 export function initWidgetSorting() {
     const container = document.getElementById("dashboard-widgets");
     if (!container) return;
 
-    const savedOrder = JSON.parse(localStorage.getItem("widgetOrder"));
-    if (savedOrder && savedOrder.length) {
-        const widgetMap = {};
-        Array.from(container.children).forEach((widget) => {
-            if (widget.id) widgetMap[widget.id] = widget;
-        });
+    const order = resolveWidgetOrder(container);
+    applyWidgetOrder(container, order);
 
-        savedOrder.forEach((id) => {
-            if (widgetMap[id]) container.appendChild(widgetMap[id]);
-        });
-    }
+    // Persist immediately so a newly-introduced widget's resolved position
+    // is saved even before the user drags anything.
+    localStorage.setItem("widgetOrder", JSON.stringify(order));
 
     const packingController = setupAutoPacking(container);
 

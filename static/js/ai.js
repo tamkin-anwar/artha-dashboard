@@ -23,11 +23,7 @@ function initAI() {
     // -----------------------------------------------------------------------
 
     function hideEmpty() {
-        if (emptyState) emptyState.style.display = "none";
-    }
-
-    function showEmpty() {
-        if (emptyState) emptyState.style.display = "";
+        document.getElementById("ai-empty-state")?.remove();
     }
 
     function formatText(raw) {
@@ -53,7 +49,7 @@ function initAI() {
             "max-w-[88%] px-3 py-2 rounded-xl text-sm leading-relaxed",
             isUser
                 ? "bg-blue-600 text-white rounded-br-none"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none",
+                : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-sm",
         ].join(" ");
 
         bubble.innerHTML = formatText(text);
@@ -68,7 +64,7 @@ function initAI() {
         row.id = "ai-loading-row";
         row.className = "flex justify-start";
         row.innerHTML = `
-            <div class="px-3 py-2.5 rounded-xl rounded-bl-none bg-gray-100 dark:bg-gray-700">
+            <div class="px-3 py-2.5 rounded-xl rounded-bl-none bg-white dark:bg-gray-900 shadow-sm">
                 <span class="flex space-x-1 items-center">
                     <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
                     <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:120ms"></span>
@@ -89,7 +85,7 @@ function initAI() {
         row.className = "flex justify-start";
         row.innerHTML = `
             <div class="max-w-[88%] px-3 py-2 rounded-xl rounded-bl-none text-sm
-                        text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20">
+                        text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 shadow-sm">
                 ${msg}
             </div>`;
         messagesEl.appendChild(row);
@@ -117,9 +113,6 @@ function initAI() {
         if (busy || !message.trim()) return;
 
         appendMessage("user", message);
-        // Push user turn into history before the request so it's part of
-        // context, but we send history *without* this latest message since
-        // the route appends it internally.
         const historySnapshot = [...history];
         history.push({ role: "user", content: message });
         setBusy(true);
@@ -139,7 +132,7 @@ function initAI() {
 
             if (!res.ok || data.error) {
                 appendError(data.error || "Something went wrong — please try again.");
-                history.pop(); // remove the failed user turn
+                history.pop();
                 return;
             }
 
@@ -195,15 +188,11 @@ function initAI() {
     function clearConversation() {
         if (busy) return;
         history = [];
-        messagesEl.innerHTML = "";
-        // Re-add empty state element
-        const empty = document.createElement("div");
-        empty.id = "ai-empty-state";
-        empty.className = "flex flex-col items-center justify-center h-full text-center";
-        empty.innerHTML = `
-            <p class="text-gray-400 dark:text-gray-500 text-sm">Ask me anything about your finances.</p>
-            <p class="text-gray-300 dark:text-gray-600 text-xs mt-1">Or hit <span class="font-medium">✦ Insights</span> for an instant report.</p>`;
-        messagesEl.appendChild(empty);
+        messagesEl.innerHTML = `
+            <div id="ai-empty-state" class="flex flex-col items-center justify-center h-full text-center">
+                <p class="text-gray-500 dark:text-gray-300 text-sm">Ask me anything about your finances.</p>
+                <p class="text-gray-400 dark:text-gray-400 text-xs mt-1">Or hit <span class="font-medium">✦ Insights</span> for an instant report.</p>
+            </div>`;
     }
 
     // -----------------------------------------------------------------------
