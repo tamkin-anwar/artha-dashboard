@@ -7,6 +7,7 @@ import "./calculator.js";
 import "./theme.js";
 import "./settings.js";
 import "./ai.js";
+import "./auth.js";
 
 import { initWidgetSorting } from "./widgets.js";
 import { updateChartData } from "./chart.js";
