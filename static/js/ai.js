@@ -49,7 +49,7 @@ function initAI() {
             "max-w-[88%] px-3 py-2 rounded-xl text-sm leading-relaxed",
             isUser
                 ? "bg-blue-600 text-white rounded-br-none"
-                : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-sm",
+                : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-sm",
         ].join(" ");
 
         bubble.innerHTML = formatText(text);
