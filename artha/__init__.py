@@ -56,6 +56,7 @@ def create_app(config_name: str = "default") -> Flask:
     # Models — must be imported so Flask-Migrate sees them
     # ------------------------------------------------------------------
     from .models import User, Note, Transaction  # noqa: F401
+    from .models.scenario import Scenario  # noqa: F401
 
     @login_manager.user_loader
     def load_user(user_id: str):
@@ -69,12 +70,14 @@ def create_app(config_name: str = "default") -> Flask:
     from .blueprints.notes import notes_bp
     from .blueprints.finance import finance_bp
     from .blueprints.ai import ai_bp
+    from .blueprints.scenarios import scenarios_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(notes_bp)
     app.register_blueprint(finance_bp)
     app.register_blueprint(ai_bp)
+    app.register_blueprint(scenarios_bp)
 
     # ------------------------------------------------------------------
     # Context processors

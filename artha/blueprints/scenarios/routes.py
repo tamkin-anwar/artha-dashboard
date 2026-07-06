@@ -1,0 +1,300 @@
+import logging
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+
+from flask import abort, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy import func
+
+from ...extensions import db
+from ...models import Transaction
+from ...models.scenario import VALID_PRIORITIES, VALID_STATUSES, Scenario
+from ...utils import is_ajax_request
+from . import scenarios_bp
+
+log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Validation helpers
+# ---------------------------------------------------------------------------
+
+class ValidationError(Exception):
+    pass
+
+
+def _parse_decimal(raw, field_name: str) -> Decimal:
+    raw = (raw or "").strip() or "0"
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        raise ValidationError(f"{field_name} must be a valid number.")
+    if value < 0:
+        raise ValidationError(f"{field_name} must be non-negative.")
+    return value
+
+
+def _parse_scale(raw, field_name: str, default: int = 5) -> int:
+    raw = (raw or "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValidationError(f"{field_name} must be a whole number.")
+    if not (1 <= value <= 10):
+        raise ValidationError(f"{field_name} must be between 1 and 10.")
+    return value
+
+
+def _parse_date(raw, field_name: str):
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValidationError(f"{field_name} must be a valid date (YYYY-MM-DD).")
+
+
+def _current_balance(user_id: int) -> Decimal:
+    income = (
+        db.session.query(func.sum(Transaction.amount))
+        .filter_by(user_id=user_id, type="income")
+        .scalar()
+        or Decimal("0")
+    )
+    expense = (
+        db.session.query(func.sum(Transaction.amount))
+        .filter_by(user_id=user_id, type="expense")
+        .scalar()
+        or Decimal("0")
+    )
+    return income - expense
+
+
+def _get_owned_scenario(scenario_id: int) -> Scenario:
+    scenario = db.session.get(Scenario, scenario_id)
+    if scenario is None or scenario.user_id != current_user.id:
+        abort(404)
+    return scenario
+
+
+def _apply_form(scenario: Scenario, form) -> None:
+    """Validate + apply submitted form fields onto scenario (new or existing)."""
+    title = (form.get("title") or "").strip()
+    if not title:
+        raise ValidationError("Title is required.")
+
+    one_time_cost = _parse_decimal(form.get("one_time_cost"), "One-time cost")
+    monthly_cost = _parse_decimal(form.get("monthly_cost"), "Monthly cost")
+    monthly_savings = _parse_decimal(form.get("monthly_savings"), "Monthly savings")
+    emotional_value = _parse_scale(form.get("emotional_value"), "Emotional value")
+    financial_risk = _parse_scale(form.get("financial_risk"), "Financial risk")
+    start_date = _parse_date(form.get("start_date"), "Start date")
+    end_date = _parse_date(form.get("end_date"), "End date")
+
+    if start_date and end_date and end_date < start_date:
+        raise ValidationError("End date can't be before start date.")
+
+    priority = form.get("priority") or "medium"
+    if priority not in VALID_PRIORITIES:
+        priority = "medium"
+
+    status = form.get("status") or "active"
+    if status not in VALID_STATUSES:
+        status = "active"
+
+    scenario.title = title
+    scenario.category = (form.get("category") or "other").strip() or "other"
+    scenario.description = (form.get("description") or "").strip() or None
+    scenario.one_time_cost = one_time_cost
+    scenario.monthly_cost = monthly_cost
+    scenario.monthly_savings = monthly_savings
+    scenario.start_date = start_date
+    scenario.end_date = end_date
+    scenario.priority = priority
+    scenario.emotional_value = emotional_value
+    scenario.financial_risk = financial_risk
+    scenario.notes = (form.get("notes") or "").strip() or None
+    scenario.status = status
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@scenarios_bp.route("/")
+@login_required
+def index():
+    status_filter = (request.args.get("status") or "").strip()
+
+    query = Scenario.query.filter_by(user_id=current_user.id)
+    if status_filter in VALID_STATUSES:
+        query = query.filter_by(status=status_filter)
+    scenarios = query.order_by(Scenario.created_at.desc()).all()
+
+    balance = _current_balance(current_user.id)
+
+    return render_template(
+        "scenarios.html",
+        scenarios=scenarios,
+        balance=balance,
+        status_filter=status_filter,
+        valid_statuses=VALID_STATUSES,
+    )
+
+
+@scenarios_bp.route("/add", methods=["GET", "POST"])
+@login_required
+def add():
+    if request.method == "GET":
+        return render_template(
+            "scenario_form.html",
+            scenario=None,
+            mode="add",
+            valid_priorities=VALID_PRIORITIES,
+            valid_statuses=VALID_STATUSES,
+        )
+
+    scenario = Scenario(user_id=current_user.id)
+    try:
+        _apply_form(scenario, request.form)
+    except ValidationError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("scenarios.add"))
+
+    try:
+        db.session.add(scenario)
+        db.session.commit()
+        flash("Scenario created!", "success")
+        return redirect(url_for("scenarios.detail", scenario_id=scenario.id))
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error creating scenario: %s", e, exc_info=True)
+        flash("Error creating scenario.", "error")
+        return redirect(url_for("scenarios.add"))
+
+
+@scenarios_bp.route("/<int:scenario_id>")
+@login_required
+def detail(scenario_id):
+    scenario = _get_owned_scenario(scenario_id)
+    balance = _current_balance(current_user.id)
+
+    return render_template(
+        "scenario_detail.html",
+        scenario=scenario,
+        balance=balance,
+        recommendation=scenario.recommendation(balance),
+        insight=scenario.insight(balance),
+    )
+
+
+@scenarios_bp.route("/<int:scenario_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(scenario_id):
+    scenario = _get_owned_scenario(scenario_id)
+
+    if request.method == "GET":
+        return render_template(
+            "scenario_form.html",
+            scenario=scenario,
+            mode="edit",
+            valid_priorities=VALID_PRIORITIES,
+            valid_statuses=VALID_STATUSES,
+        )
+
+    try:
+        _apply_form(scenario, request.form)
+    except ValidationError as exc:
+        db.session.rollback()
+        flash(str(exc), "error")
+        return redirect(url_for("scenarios.edit", scenario_id=scenario_id))
+
+    try:
+        db.session.commit()
+        flash("Scenario updated!", "success")
+        return redirect(url_for("scenarios.detail", scenario_id=scenario.id))
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error updating scenario: %s", e, exc_info=True)
+        flash("Error updating scenario.", "error")
+        return redirect(url_for("scenarios.edit", scenario_id=scenario_id))
+
+
+@scenarios_bp.route("/<int:scenario_id>/delete", methods=["POST"])
+@login_required
+def delete(scenario_id):
+    scenario = db.session.get(Scenario, scenario_id)
+    if scenario is None or scenario.user_id != current_user.id:
+        if is_ajax_request():
+            return jsonify({"message": "Not found"}), 404
+        flash("Scenario not found.", "error")
+        return redirect(url_for("scenarios.index"))
+
+    try:
+        db.session.delete(scenario)
+        db.session.commit()
+        if is_ajax_request():
+            return jsonify({"message": "Scenario deleted."})
+        flash("Scenario deleted.", "success")
+        return redirect(url_for("scenarios.index"))
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error deleting scenario: %s", e, exc_info=True)
+        if is_ajax_request():
+            return jsonify({"message": "Error deleting scenario."}), 500
+        flash("Error deleting scenario.", "error")
+        return redirect(url_for("scenarios.index"))
+
+
+@scenarios_bp.route("/<int:scenario_id>/archive", methods=["POST"])
+@login_required
+def archive(scenario_id):
+    scenario = db.session.get(Scenario, scenario_id)
+    if scenario is None or scenario.user_id != current_user.id:
+        if is_ajax_request():
+            return jsonify({"message": "Not found"}), 404
+        flash("Scenario not found.", "error")
+        return redirect(url_for("scenarios.index"))
+
+    scenario.status = "archived"
+    try:
+        db.session.commit()
+        if is_ajax_request():
+            return jsonify({"message": "Scenario archived."})
+        flash("Scenario archived.", "success")
+        return redirect(url_for("scenarios.index"))
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error archiving scenario: %s", e, exc_info=True)
+        if is_ajax_request():
+            return jsonify({"message": "Error archiving scenario."}), 500
+        flash("Error archiving scenario.", "error")
+        return redirect(url_for("scenarios.index"))
+
+
+# ---------------------------------------------------------------------------
+# Dashboard widget data — registered here (not in dashboard/routes.py) so the
+# widget's data is available to templates/index.html without modifying the
+# existing dashboard blueprint.
+# ---------------------------------------------------------------------------
+
+@scenarios_bp.app_context_processor
+def inject_scenario_widget_data():
+    if not current_user.is_authenticated or request.endpoint != "dashboard.index":
+        return {}
+
+    active = (
+        Scenario.query.filter_by(user_id=current_user.id, status="active")
+        .order_by(Scenario.created_at.desc())
+        .all()
+    )
+    total_monthly_impact = sum((s.net_monthly_impact for s in active), Decimal("0"))
+
+    return {
+        "scenario_widget_scenarios": active[:3],
+        "scenario_widget_total_count": len(active),
+        "scenario_widget_total_monthly_impact": total_monthly_impact,
+    }

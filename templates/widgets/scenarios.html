@@ -1,0 +1,60 @@
+{% set scenarios = scenario_widget_scenarios or [] %}
+{% set total_count = scenario_widget_total_count or 0 %}
+{% set total_impact = scenario_widget_total_monthly_impact or 0 %}
+
+<div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">🎯 Scenarios</h2>
+        <a href="{{ url_for('scenarios.index') }}" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+            View all →
+        </a>
+    </div>
+
+    {% if scenarios %}
+        <ul class="space-y-3">
+            {% for s in scenarios %}
+                <li>
+                    <a
+                        href="{{ url_for('scenarios.detail', scenario_id=s.id) }}"
+                        class="block px-4 py-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition"
+                    >
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm truncate text-black dark:text-white">{{ s.title }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">{{ s.category }}</p>
+                            </div>
+                            <span
+                                class="scenario-money shrink-0 text-sm font-semibold {% if s.net_monthly_impact >= 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}"
+                                data-money-value="{{ s.net_monthly_impact }}"
+                                data-money-signed="true"
+                                data-money-suffix="/mo"
+                            >{{ "%+.2f"|format(s.net_monthly_impact) }}/mo</span>
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <div class="mt-4 pt-4 border-t border-gray-200/70 dark:border-gray-600/60 flex items-center justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-300">
+                Total monthly impact ({{ total_count }} active)
+            </span>
+            <strong
+                class="scenario-money {% if total_impact >= 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}"
+                data-money-value="{{ total_impact }}"
+                data-money-signed="true"
+            >{{ "%+.2f"|format(total_impact) }}</strong>
+        </div>
+    {% else %}
+        <p class="text-sm text-gray-500 dark:text-gray-300 text-center py-6">
+            No active scenarios yet.
+        </p>
+    {% endif %}
+
+    <a
+        href="{{ url_for('scenarios.add') }}"
+        class="mt-4 block w-full text-center py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+    >
+        + New Scenario
+    </a>
+</div>
