@@ -205,6 +205,21 @@ body {
     cursor: grabbing;
 }
 
+/* Widgets with buttons/inputs in their header (e.g. the AI widget's
+   Insights/Clear buttons) sit inside the drag zone's 60px band. Lift
+   interactive elements above the drag zone so clicks reach them instead
+   of starting a drag. */
+.widget button,
+.widget input,
+.widget select,
+.widget textarea,
+.widget a,
+.widget [contenteditable="true"],
+.widget [role="button"] {
+    position: relative;
+    z-index: 20;
+}
+
 .is-widget-dragging {
     user-select: none;
 }
