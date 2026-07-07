@@ -188,6 +188,12 @@
         </p>
     {% endif %}
 
+    {% if recurring_count > 0 %}
+        <p style="font-size:13px; color:var(--gold); margin:0 0 12px;">
+            ↻ {{ recurring_count }} recurring transaction{{ 's' if recurring_count != 1 else '' }} set
+        </p>
+    {% endif %}
+
     <ul id="tx-list" class="space-y-3">
         {% for tx in transactions %}
             {% include "partials/transaction_row.html" %}
@@ -298,5 +304,33 @@ if (scrollRow && leftBtn && rightBtn) {
         activeTab.scrollIntoView({ inline: "center", block: "nearest" });
     }
 }
+
+// Silently generate this month's recurring transactions on page load. If
+// anything new was created, reload once (preserving the current URL/month)
+// so it shows up — the request itself has no visible UI of its own. This
+// can't loop: a reload re-runs this fetch, but the transactions it would
+// generate already exist by then, so the second call always reports 0.
+(function () {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
+
+    fetch("/finance/generate-recurring", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken,
+        },
+    })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+            if (data && data.generated > 0) {
+                window.location.reload();
+            }
+        })
+        .catch(function (err) {
+            console.warn("Could not generate recurring transactions:", err);
+        });
+})();
 </script>
 {% endblock %}

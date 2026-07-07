@@ -222,6 +222,32 @@ h1, h2, h3, .stat-number {
   display: none;
 }
 
+/* Recurring transaction toggle pill */
+.tx-recurring-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.tx-recurring-toggle:hover {
+  background: var(--bg-card);
+}
+.tx-recurring-toggle.tx-recurring-on {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
 /* Tables — no alternating rows, subtle row dividers */
 .plain-table tr {
   border-bottom: 1px solid var(--border-subtle);

@@ -1,6 +1,6 @@
 <!-- templates/partials/transaction_row.html -->
 <li class="tx-row flex items-start sm:items-center justify-between gap-3"
-    style="padding:10px 12px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:10px;"
+    style="padding:10px 12px; background:var(--bg-card); border:1px solid var(--border-subtle); {{ 'border-left:3px solid var(--gold);' if tx.is_recurring else '' }} border-radius:10px;"
     data-id="{{ tx.id }}">
 
     <button type="button"
@@ -17,11 +17,18 @@
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <span contenteditable="true"
-                data-id="{{ tx.id }}"
-                class="tx-desc w-full sm:flex-1 min-w-0 break-words"
-                style="background:transparent; outline:none; font-size:14px; color:var(--text-primary);">
-            {{ tx.description }}
+        <span class="w-full sm:flex-1 min-w-0">
+            <span contenteditable="true"
+                    data-id="{{ tx.id }}"
+                    class="tx-desc block w-full break-words"
+                    style="background:transparent; outline:none; font-size:14px; color:var(--text-primary);">
+                {{ tx.description }}
+            </span>
+            {% if tx.is_recurring %}
+                <span class="tx-recurring-label" style="display:block; font-size:11px; color:var(--gold); margin-top:2px;">
+                    ↻ recurring
+                </span>
+            {% endif %}
         </span>
 
         <span contenteditable="true"
@@ -39,6 +46,14 @@
             <option value="income" {% if tx.type == "income" %}selected{% endif %}>Income</option>
             <option value="expense" {% if tx.type == "expense" %}selected{% endif %}>Expense</option>
         </select>
+
+        <button
+            type="button"
+            class="tx-recurring-toggle {{ 'tx-recurring-on' if tx.is_recurring }}"
+            data-id="{{ tx.id }}"
+            aria-pressed="{{ 'true' if tx.is_recurring else 'false' }}"
+            title="{{ 'Recurring — click to turn off' if tx.is_recurring else 'Mark as recurring' }}"
+        >{{ '↻' if tx.is_recurring else '' }}</button>
 
         <button type="submit" class="hidden">Save</button>
     </form>

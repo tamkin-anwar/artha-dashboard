@@ -1,124 +1,160 @@
 /* Toast container for stacking multiple toasts */
 .toast-container {
     position: fixed;
-    bottom: 2rem;
-    right: 2rem;
+    bottom: 24px;
+    right: 24px;
+    width: 320px;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 12px;
     z-index: 9999; /* Ensure toasts appear above most content */
 }
 
 /* Responsive repositioning for small screens */
 @media (max-width: 640px) {
     .toast-container {
-        bottom: auto;
-        top: 1rem;
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
         width: auto;
-        max-width: 90vw;
-        align-items: center;
     }
 }
 
-/* Individual toast */
+/* Individual toast — a fixed dark glass surface regardless of site theme,
+   same treatment as the rest of the app's premium chrome (auth pages,
+   settings dropdown). var(--text-primary)/--text-secondary are theme-
+   conditional and would go low-contrast against this background in light
+   mode, so title/message colors below are intentionally hardcoded to the
+   dark-theme values rather than referencing those variables. */
 .toast {
-    background: var(--toast-bg, #2d3748); /* use CSS variable with fallback */
-    color: var(--toast-text-color, #fff);
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    font-size: 0.875rem;
-    font-weight: 500;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s; /* smoother with delay */
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(20, 25, 38, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
     pointer-events: auto;
+
+    opacity: 0;
+    transform: translateX(24px);
+    transition: opacity 300ms ease-out, transform 300ms ease-out;
 }
 
 /* Visible state triggered by JS */
 .toast.visible {
     opacity: 1;
-    transform: translateY(0);
-    transition-delay: 0s; /* no delay when becoming visible */
-}
-
-/* Variants for success and error */
-.toast-success {
-    background: var(--toast-success-bg, #10b981); /* emerald green */
-}
-
-.toast-error {
-    background: var(--toast-error-bg, #ef4444); /* red */
+    transform: translateX(0);
 }
 
 /* Exit animation */
 .toast.exit {
     opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(24px);
+    transition: opacity 200ms ease-in, transform 200ms ease-in;
+}
+
+/* Left accent bar (4px, full height, rounded) — color set per type below */
+.toast::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 6px;
+    width: 4px;
+    border-radius: 999px;
+    background: var(--toast-accent, #d4a843);
+}
+
+.toast-success { --toast-accent: #22c55e; }
+.toast-error   { --toast-accent: #ef4444; }
+.toast-info    { --toast-accent: #d4a843; }
+.toast-warning { --toast-accent: #f59e0b; }
+
+.toast-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-left: 8px; /* clear the accent bar */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--toast-accent, #d4a843);
+}
+
+.toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0ede8;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.toast-message {
+    font-size: 12px;
+    color: #8b95a8;
+    margin: 2px 0 0;
+    line-height: 1.4;
 }
 
 /* Close button styling */
 .toast .close-btn {
+    flex-shrink: 0;
     background: transparent;
     border: none;
-    color: inherit;
-    font-size: 1rem;
+    color: #4a5468;
+    font-size: 16px;
+    line-height: 1;
     cursor: pointer;
-    margin-left: 0.5rem;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
+    padding: 0;
+    margin-left: 4px;
+    transition: color 0.15s ease;
     outline-offset: 2px;
 }
 
 /* Show visible outline for keyboard focus */
 .toast .close-btn:focus {
-    outline: 2px solid var(--toast-text-color, #fff);
+    outline: 2px solid rgba(212, 168, 67, 0.5);
     outline-offset: 2px;
+    border-radius: 3px;
 }
 
 /* Hover style for close button */
 .toast .close-btn:hover {
-    opacity: 1;
+    color: #8b95a8;
 }
 
-/* Optional spinner inside toast */
-.toast .spinner {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: var(--toast-text-color, #fff);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 0.5rem;
-    vertical-align: middle;
+/* Auto-dismiss progress bar — drains right-to-left in the accent color */
+.toast-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: var(--toast-accent, #d4a843);
+    opacity: 0.4;
+    transform-origin: right;
+    pointer-events: none;
+    animation-name: toast-progress-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
 }
 
-/* Spinner animation */
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Theme variables — matches the light/dark palettes in style.css.
-   --text-primary is not redeclared here; style.css already themes it. */
-:root {
-    --toast-bg: #ffffff;
-    --toast-text-color: #1f2430;
-    --toast-success-bg: #16a34a;
-    --toast-error-bg: #dc2626;
-}
-
-.dark {
-    --toast-bg: #1e2435;
-    --toast-text-color: #f0ede8;
-    --toast-success-bg: #22c55e;
-    --toast-error-bg: #ef4444;
+@keyframes toast-progress-drain {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 .chart-text {
@@ -127,20 +163,23 @@
 
 /* Action button inside toast (Undo, Retry, etc.) */
 .toast-action-btn {
-    margin-left: 10px;
-    padding: 6px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.18);
-    background: rgba(255,255,255,0.08);
-    color: inherit;
+    flex-shrink: 0;
+    margin-left: 8px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #f0ede8;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    }
+}
 
-    .toast-action-btn:hover {
-    background: rgba(255,255,255,0.14);
-    }
+.toast-action-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
 
-    .toast-action-btn:focus {
-    outline: none;
+.toast-action-btn:focus {
+    outline: 2px solid rgba(212, 168, 67, 0.5);
+    outline-offset: 2px;
 }

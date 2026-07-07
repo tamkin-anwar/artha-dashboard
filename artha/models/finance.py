@@ -15,6 +15,7 @@ class Transaction(db.Model):
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     position = db.Column(db.Integer, nullable=False, default=0, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    is_recurring = db.Column(db.Boolean, nullable=False, default=False)
 
     def __repr__(self) -> str:
         return f"<Transaction {self.id} {self.type} {self.amount}>"

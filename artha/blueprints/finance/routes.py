@@ -273,6 +273,104 @@ def undo_delete_transaction():
         return jsonify({"message": "Error restoring transaction"}), 500
 
 
+@finance_bp.route("/finance/transaction/<int:transaction_id>/toggle-recurring", methods=["PATCH"])
+@login_required
+def toggle_recurring(transaction_id):
+    tx = db.session.get(Transaction, transaction_id)
+    if tx is None:
+        return jsonify({"message": "Not found"}), 404
+    if tx.user_id != current_user.id:
+        return jsonify({"message": "Unauthorized"}), 403
+
+    tx.is_recurring = not tx.is_recurring
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Recurring status updated", "is_recurring": tx.is_recurring})
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error toggling recurring flag: %s", e, exc_info=True)
+        return jsonify({"message": "Database error"}), 500
+
+
+@finance_bp.route("/finance/generate-recurring", methods=["POST"])
+@login_required
+def generate_recurring():
+    """
+    Auto-generate this month's copy of every recurring transaction that
+    doesn't already have one. Called silently on every /finance page load.
+
+    A recurring transaction "already exists this month" if a transaction
+    with the same description + type falls within the current calendar
+    month — that's the dedup key, per spec.
+    """
+    uid = current_user.id
+    today = date.today()
+    month_start = _month_start(today.year, today.month)
+    next_month_start = _month_start(
+        today.year + 1 if today.month == 12 else today.year,
+        1 if today.month == 12 else today.month + 1,
+    )
+
+    recurring_txs = Transaction.query.filter_by(user_id=uid, is_recurring=True).all()
+
+    # Recurring transactions accumulate one row per month (each generated
+    # copy stays is_recurring=True so it keeps showing the recurring UI).
+    # Collapse to one representative row per unique (description, type) —
+    # the most recent — so a "Netflix" template with 6 months of history
+    # doesn't get processed 6 times.
+    templates_by_key: dict[tuple[str, str], Transaction] = {}
+    for tx in recurring_txs:
+        key = (tx.description, tx.type)
+        current = templates_by_key.get(key)
+        if current is None or (tx.timestamp and current.timestamp and tx.timestamp > current.timestamp):
+            templates_by_key[key] = tx
+
+    existing_this_month = Transaction.query.filter(
+        Transaction.user_id == uid,
+        Transaction.timestamp >= month_start,
+        Transaction.timestamp < next_month_start,
+    ).all()
+    existing_keys = {(t.description, t.type) for t in existing_this_month}
+
+    max_pos = (
+        db.session.query(func.max(Transaction.position))
+        .filter_by(user_id=uid)
+        .scalar()
+        or 0
+    )
+
+    generated = 0
+    skipped = 0
+
+    for key, template_tx in templates_by_key.items():
+        if key in existing_keys:
+            skipped += 1
+            continue
+
+        max_pos += 1
+        new_tx = Transaction(
+            description=template_tx.description,
+            amount=template_tx.amount,
+            type=template_tx.type,
+            user_id=uid,
+            position=int(max_pos),
+            is_recurring=True,
+        )
+        db.session.add(new_tx)
+        generated += 1
+
+    if generated:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            log.error("Error generating recurring transactions: %s", e, exc_info=True)
+            return jsonify({"message": "Error generating recurring transactions"}), 500
+
+    return jsonify({"generated": generated, "skipped": skipped})
+
+
 @finance_bp.get("/api/finance_totals")
 @login_required
 def finance_totals():
@@ -470,6 +568,12 @@ def finance_page():
             "net": float(b["income"] - b["expense"]),
         })
 
+    # Distinct recurring "rules" (by description + type), not a raw row
+    # count — each rule accumulates one generated row per month, so a raw
+    # count would grow every month even though nothing new was configured.
+    recurring_rows = Transaction.query.filter_by(user_id=uid, is_recurring=True).all()
+    recurring_count = len({(t.description, t.type) for t in recurring_rows})
+
     return render_template(
         "finance.html",
         transactions=transactions,
@@ -485,4 +589,5 @@ def finance_page():
         biggest_category=biggest_category,
         biggest_day_label=biggest_day_label,
         trend_data=trend_data,
+        recurring_count=recurring_count,
     )

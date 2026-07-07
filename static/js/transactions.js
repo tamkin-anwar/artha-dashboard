@@ -264,12 +264,73 @@ function attachDeleteListener(row) {
     });
 }
 
+function applyRecurringState(row, isRecurring) {
+    const btn = row.querySelector(".tx-recurring-toggle");
+    if (btn) {
+        btn.classList.toggle("tx-recurring-on", isRecurring);
+        btn.setAttribute("aria-pressed", String(isRecurring));
+        btn.title = isRecurring ? "Recurring — click to turn off" : "Mark as recurring";
+        btn.textContent = isRecurring ? "↻" : "";
+    }
+
+    row.style.borderLeft = isRecurring ? "3px solid var(--gold)" : "";
+
+    const descEl = row.querySelector(".tx-desc");
+    const descWrapper = descEl?.parentElement;
+    let label = row.querySelector(".tx-recurring-label");
+
+    if (isRecurring && !label && descWrapper) {
+        label = document.createElement("span");
+        label.className = "tx-recurring-label";
+        label.style.cssText = "display:block; font-size:11px; color:var(--gold); margin-top:2px;";
+        label.textContent = "↻ recurring";
+        descWrapper.appendChild(label);
+    } else if (!isRecurring && label) {
+        label.remove();
+    }
+}
+
+async function toggleRecurring(row) {
+    const btn = row.querySelector(".tx-recurring-toggle");
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    try {
+        const res = await fetch(`/finance/transaction/${id}/toggle-recurring`, {
+            method: "PATCH",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            showToast(data?.message || "Could not update recurring status", "error");
+            return;
+        }
+
+        applyRecurringState(row, !!data.is_recurring);
+    } catch (err) {
+        console.error("Network error toggling recurring:", err);
+        showToast("Network error while updating recurring status", "error");
+    }
+}
+
+function attachRecurringToggleListener(row) {
+    const btn = row.querySelector(".tx-recurring-toggle");
+    if (!btn) return;
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", () => toggleRecurring(row));
+}
+
 function attachRowListeners(row) {
     const desc = row.querySelector(".tx-desc");
     const amount = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
 
     attachDeleteListener(row);
+    attachRecurringToggleListener(row);
 
     if (desc) {
         desc.addEventListener("keydown", (e) => {
