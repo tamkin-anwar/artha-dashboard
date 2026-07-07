@@ -36,6 +36,25 @@ def _validate_amount(amount_str: str) -> Decimal:
     return amount
 
 
+def _resolve_transaction_timestamp(date_str: str | None) -> datetime:
+    """
+    Parse an optional YYYY-MM-DD date string into a datetime pinned to noon
+    UTC (avoids the transaction silently landing on the "wrong" calendar
+    day near a midnight UTC boundary). Falls back to today — also pinned
+    to noon UTC — if the string is missing or malformed.
+    """
+    date_str = (date_str or "").strip()
+    parsed = None
+    if date_str:
+        try:
+            parsed = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            parsed = None
+    if parsed is None:
+        parsed = datetime.now(timezone.utc).date()
+    return datetime(parsed.year, parsed.month, parsed.day, 12, 0, 0, tzinfo=timezone.utc)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -79,13 +98,18 @@ def add_transaction():
         type=t_type,
         user_id=current_user.id,
         position=int(max_pos) + 1,
+        timestamp=_resolve_transaction_timestamp(request.form.get("date")),
     )
 
     try:
         db.session.add(new_tx)
         db.session.commit()
         if is_ajax_request():
-            return render_template("partials/transaction_row.html", tx=new_tx)
+            return render_template(
+                "partials/transaction_row.html",
+                tx=new_tx,
+                today_date=date.today().strftime("%Y-%m-%d"),
+            )
         flash("Transaction added!", "success")
         return redirect(url_for("dashboard.index"))
     except Exception as e:
@@ -125,9 +149,20 @@ def update_transaction(transaction_id):
     tx.amount = amount
     tx.type = t_type
 
+    # Only touch the date if one was actually sent — an edit to just the
+    # description/amount/type shouldn't silently reset the transaction to
+    # today.
+    date_str = (data.get("date") or "").strip()
+    if date_str:
+        tx.timestamp = _resolve_transaction_timestamp(date_str)
+
     try:
         db.session.commit()
-        return jsonify({"message": "Transaction updated successfully"})
+        return jsonify({
+            "message": "Transaction updated successfully",
+            "date": tx.timestamp.strftime("%Y-%m-%d"),
+            "date_label": tx.timestamp.strftime("%b %d, %Y"),
+        })
     except Exception as e:
         db.session.rollback()
         log.error("Error updating transaction: %s", e, exc_info=True)
@@ -265,7 +300,11 @@ def undo_delete_transaction():
         db.session.commit()
         session.pop("last_deleted_tx", None)
 
-        row_html = render_template("partials/transaction_row.html", tx=restored)
+        row_html = render_template(
+            "partials/transaction_row.html",
+            tx=restored,
+            today_date=date.today().strftime("%Y-%m-%d"),
+        )
         return jsonify({"message": "Transaction restored.", "row_html": row_html})
     except Exception as e:
         db.session.rollback()
@@ -356,6 +395,7 @@ def generate_recurring():
             user_id=uid,
             position=int(max_pos),
             is_recurring=True,
+            timestamp=_resolve_transaction_timestamp(None),
         )
         db.session.add(new_tx)
         generated += 1
@@ -440,7 +480,7 @@ def finance_page():
     uid = current_user.id
     all_tx = (
         Transaction.query.filter_by(user_id=uid)
-        .order_by(Transaction.position.asc(), Transaction.id.asc())
+        .order_by(Transaction.timestamp.desc(), Transaction.id.desc())
         .all()
     )
 
@@ -590,4 +630,5 @@ def finance_page():
         biggest_day_label=biggest_day_label,
         trend_data=trend_data,
         recurring_count=recurring_count,
+        today_date=today.strftime("%Y-%m-%d"),
     )

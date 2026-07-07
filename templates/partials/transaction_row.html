@@ -1,15 +1,8 @@
 <!-- templates/partials/transaction_row.html -->
 <li class="tx-row flex items-start sm:items-center justify-between gap-3"
     style="padding:10px 12px; background:var(--bg-card); border:1px solid var(--border-subtle); {{ 'border-left:3px solid var(--gold);' if tx.is_recurring else '' }} border-radius:10px;"
-    data-id="{{ tx.id }}">
-
-    <button type="button"
-            class="tx-handle mt-1 sm:mt-0"
-            style="cursor:move; user-select:none; color:var(--text-muted); font-size:15px; line-height:1; background:none; border:none;"
-            title="Drag to reorder"
-            aria-label="Drag to reorder">
-        ☰
-    </button>
+    data-id="{{ tx.id }}"
+    data-date="{{ tx.timestamp.strftime('%Y-%m-%d') }}">
 
     <form method="POST"
             action="{{ url_for('finance.update_transaction', transaction_id=tx.id) }}"
@@ -24,11 +17,12 @@
                     style="background:transparent; outline:none; font-size:14px; color:var(--text-primary);">
                 {{ tx.description }}
             </span>
-            {% if tx.is_recurring %}
-                <span class="tx-recurring-label" style="display:block; font-size:11px; color:var(--gold); margin-top:2px;">
-                    ↻ recurring
-                </span>
-            {% endif %}
+            <div class="tx-meta-row" style="font-size:11px; color:var(--text-secondary); margin-top:2px; display:flex; align-items:center; gap:6px;">
+                <span class="tx-date-label">{{ tx.timestamp.strftime('%b %d, %Y') }}</span>
+                {% if tx.is_recurring %}
+                    <span class="tx-recurring-label" style="color:var(--gold);">&middot; &#8635; recurring</span>
+                {% endif %}
+            </div>
         </span>
 
         <span contenteditable="true"
@@ -39,6 +33,15 @@
                 style="background:transparent; outline:none; font-size:14px; font-family:'JetBrains Mono',monospace;">
             {{ "%.2f"|format(tx.amount) }}
         </span>
+
+        <input
+            type="date"
+            class="tx-date min-w-[130px] sm:w-[140px] h-9 field-input"
+            style="font-size:13px; padding:0 8px;"
+            data-id="{{ tx.id }}"
+            value="{{ tx.timestamp.strftime('%Y-%m-%d') }}"
+            max="{{ today_date }}"
+        >
 
         <select data-id="{{ tx.id }}"
                 class="tx-type min-w-[96px] sm:w-[105px] h-9 field-input"

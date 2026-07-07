@@ -147,47 +147,57 @@
             class="field-input w-full min-w-0 sm:col-span-4 h-11 text-sm"
         >
 
-        <div class="relative w-full min-w-0 sm:col-span-3">
-            <span
-                class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm"
-                style="color:var(--text-muted);"
-                data-currency-symbol
-            >$</span>
+        <div class="grid grid-cols-2 gap-2.5 sm:contents">
+            <div class="relative w-full min-w-0 sm:col-span-2">
+                <span
+                    class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm"
+                    style="color:var(--text-muted);"
+                    data-currency-symbol
+                >$</span>
+
+                <input
+                    type="number"
+                    name="amount"
+                    placeholder="Amount"
+                    step="0.01"
+                    inputmode="decimal"
+                    required
+                    class="field-input w-full min-w-0 h-11 text-sm"
+                    style="padding-left:2.25rem;"
+                >
+            </div>
 
             <input
-                type="number"
-                name="amount"
-                placeholder="Amount"
-                step="0.01"
-                inputmode="decimal"
-                required
-                class="field-input w-full min-w-0 h-11 text-sm"
-                style="padding-left:2.25rem;"
+                type="date"
+                name="date"
+                id="tx-date-input"
+                value="{{ today_date }}"
+                max="{{ today_date }}"
+                class="w-full min-w-0 sm:col-span-2"
+                style="background:var(--bg-sidebar); border:1px solid var(--border-subtle);
+                       color:var(--text-primary); border-radius:8px; padding:10px 14px;
+                       font-family:'Inter',sans-serif; font-size:14px; height:2.75rem;"
             >
         </div>
 
-        <select
-            name="type"
-            required
-            class="field-input w-full min-w-0 sm:col-span-3 h-11 text-sm"
-        >
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-        </select>
+        <div class="grid grid-cols-2 gap-2.5 sm:contents">
+            <select
+                name="type"
+                required
+                class="field-input w-full min-w-0 sm:col-span-2 h-11 text-sm"
+            >
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
 
-        <button
-            type="submit"
-            class="btn-primary w-full sm:col-span-2 h-11 px-5 text-sm flex items-center justify-center whitespace-nowrap"
-        >
-            Add
-        </button>
+            <button
+                type="submit"
+                class="btn-primary w-full sm:col-span-2 h-11 px-5 text-sm flex items-center justify-center whitespace-nowrap"
+            >
+                Add
+            </button>
+        </div>
     </form>
-
-    {% if not all_time %}
-        <p style="font-size:12px; color:var(--text-muted); margin:-8px 0 16px;">
-            New transactions are always dated today, so they may not appear here if you're viewing a past month.
-        </p>
-    {% endif %}
 
     {% if recurring_count > 0 %}
         <p style="font-size:13px; color:var(--gold); margin:0 0 12px;">
@@ -196,7 +206,19 @@
     {% endif %}
 
     <ul id="tx-list" class="space-y-3">
+        {% set ns = namespace(last_date=None) %}
         {% for tx in transactions %}
+            {% set tx_date = tx.timestamp.strftime('%Y-%m-%d') %}
+            {% if tx_date != ns.last_date %}
+                <li class="tx-date-divider" style="list-style:none;">
+                    <div style="color:var(--text-muted); font-size:11px; display:flex; align-items:center; gap:8px; margin:{{ '0' if loop.first else '16px' }} 0 8px;">
+                        <span style="flex:1; height:1px; background:var(--border-subtle);"></span>
+                        <span>{{ tx.timestamp.strftime('%b %d, %Y') }}</span>
+                        <span style="flex:1; height:1px; background:var(--border-subtle);"></span>
+                    </div>
+                </li>
+                {% set ns.last_date = tx_date %}
+            {% endif %}
             {% include "partials/transaction_row.html" %}
         {% else %}
             <li style="text-align:center; padding:24px 0; font-size:14px; color:var(--text-secondary);">

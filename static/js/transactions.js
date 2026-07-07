@@ -5,7 +5,6 @@ import { formatMoney } from "./currency.js";
 
 let ariaLiveRegion = null;
 let saveTimeout = null;
-let txSortable = null;
 
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -88,54 +87,73 @@ async function updateSummaryUI() {
     }
 }
 
-async function persistTransactionOrder(listEl) {
-    const ids = Array.from(listEl.querySelectorAll("li[data-id]")).map((li) => Number(li.dataset.id));
-    if (!ids.length) return;
+// -----------------------------------------------------------------------
+// Date-based sorting & grouping — replaces manual drag-to-reorder. Rows
+// are always displayed newest-first by their data-date attribute, with a
+// divider inserted above the first row of each distinct date.
+// -----------------------------------------------------------------------
 
-    const res = await fetch("/reorder_transactions", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-            "Content-Type": "application/json",
-            ...csrfHeaders(),
-        },
-        body: JSON.stringify({ order: ids }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        const msg = data?.message || "Failed to save order";
-        showToast(msg, "error");
-    }
+function formatDateLabel(dateStr) {
+    const parts = (dateStr || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return dateStr || "";
+    const [y, m, d] = parts;
+    // Noon UTC avoids the label flipping to the previous/next day depending
+    // on the viewer's local timezone offset.
+    const dt = new Date(Date.UTC(y, m - 1, d, 12));
+    return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" });
 }
 
-function initTransactionSortable() {
+function buildDateDivider(dateStr, isFirst) {
+    const li = document.createElement("li");
+    li.className = "tx-date-divider";
+    li.style.listStyle = "none";
+
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `color:var(--text-muted); font-size:11px; display:flex; align-items:center; gap:8px; margin:${isFirst ? "0" : "16px"} 0 8px;`;
+
+    const lineLeft = document.createElement("span");
+    lineLeft.style.cssText = "flex:1; height:1px; background:var(--border-subtle);";
+
+    const label = document.createElement("span");
+    label.textContent = formatDateLabel(dateStr);
+
+    const lineRight = document.createElement("span");
+    lineRight.style.cssText = "flex:1; height:1px; background:var(--border-subtle);";
+
+    wrap.appendChild(lineLeft);
+    wrap.appendChild(label);
+    wrap.appendChild(lineRight);
+    li.appendChild(wrap);
+    return li;
+}
+
+function resortTransactionRows() {
     const list = document.getElementById("tx-list");
     if (!list) return;
 
-    if (list.dataset.sortableBound === "1") return;
+    const rows = Array.from(list.querySelectorAll("li[data-id]"));
+    if (!rows.length) return;
 
-    if (!window.Sortable) {
-        console.warn("[TX Sortable] window.Sortable not found. Vendor script not loaded or cached wrong.");
-        return;
-    }
-
-    txSortable = new window.Sortable(list, {
-        animation: 150,
-        handle: ".tx-handle",
-        draggable: "li[data-id]",
-        onEnd: async () => {
-            try {
-                await persistTransactionOrder(list);
-                showToast("Order saved", "success");
-            } catch (e) {
-                console.warn("Persist order failed:", e);
-                showToast("Could not save order", "error");
-            }
-        },
+    rows.sort((a, b) => {
+        const dateA = a.dataset.date || "";
+        const dateB = b.dataset.date || "";
+        if (dateA === dateB) return 0;
+        return dateA < dateB ? 1 : -1; // newest first
     });
 
-    list.dataset.sortableBound = "1";
+    // Rebuild from scratch: drop stale dividers, then re-append rows with
+    // a fresh divider inserted wherever the date changes.
+    list.querySelectorAll(".tx-date-divider").forEach((el) => el.remove());
+
+    let lastDate = null;
+    rows.forEach((row) => {
+        const rowDate = row.dataset.date || "";
+        if (rowDate !== lastDate) {
+            list.appendChild(buildDateDivider(rowDate, lastDate === null));
+            lastDate = rowDate;
+        }
+        list.appendChild(row);
+    });
 }
 
 async function undoDeleteTransaction() {
@@ -163,7 +181,7 @@ async function undoDeleteTransaction() {
         const list = document.getElementById("tx-list");
 
         if (restoredRow && list) {
-            list.prepend(restoredRow);
+            list.appendChild(restoredRow);
 
             const typeSelect = restoredRow.querySelector(".tx-type");
             const amountEl = restoredRow.querySelector(".tx-amount");
@@ -173,12 +191,11 @@ async function undoDeleteTransaction() {
             }
 
             attachRowListeners(restoredRow);
+            resortTransactionRows();
 
             const msg = data?.message || "Transaction restored.";
             showToast(msg, "success");
             if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
-
-            await persistTransactionOrder(list);
         } else {
             showToast("Transaction restored, but UI could not render the row.", "error");
         }
@@ -231,6 +248,7 @@ function attachDeleteListener(row) {
             }
 
             rowEl.remove();
+            resortTransactionRows(); // clears any now-orphaned date divider
 
             const msg = data?.message || "Transaction deleted";
             if (ariaLiveRegion) ariaLiveRegion.textContent = msg;
@@ -243,9 +261,6 @@ function attachDeleteListener(row) {
             } else {
                 showToast(msg, "info");
             }
-
-            const list = document.getElementById("tx-list");
-            if (list) await persistTransactionOrder(list);
 
             await updateChartData();
             await updateSummaryUI();
@@ -275,16 +290,15 @@ function applyRecurringState(row, isRecurring) {
 
     row.style.borderLeft = isRecurring ? "3px solid var(--gold)" : "";
 
-    const descEl = row.querySelector(".tx-desc");
-    const descWrapper = descEl?.parentElement;
+    const metaRow = row.querySelector(".tx-meta-row");
     let label = row.querySelector(".tx-recurring-label");
 
-    if (isRecurring && !label && descWrapper) {
+    if (isRecurring && !label && metaRow) {
         label = document.createElement("span");
         label.className = "tx-recurring-label";
-        label.style.cssText = "display:block; font-size:11px; color:var(--gold); margin-top:2px;";
-        label.textContent = "↻ recurring";
-        descWrapper.appendChild(label);
+        label.style.color = "var(--gold)";
+        label.textContent = "· ↻ recurring";
+        metaRow.appendChild(label);
     } else if (!isRecurring && label) {
         label.remove();
     }
@@ -328,6 +342,7 @@ function attachRowListeners(row) {
     const desc = row.querySelector(".tx-desc");
     const amount = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
+    const dateInput = row.querySelector(".tx-date");
 
     attachDeleteListener(row);
     attachRecurringToggleListener(row);
@@ -360,6 +375,12 @@ function attachRowListeners(row) {
             debounceSaveTransaction(e);
         });
     }
+
+    if (dateInput) {
+        dateInput.addEventListener("change", (e) => {
+            debounceSaveTransaction(e);
+        });
+    }
 }
 
 async function saveTransaction(e) {
@@ -370,10 +391,12 @@ async function saveTransaction(e) {
     const descEl = row.querySelector(".tx-desc");
     const amountEl = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
+    const dateInput = row.querySelector(".tx-date");
     if (!descEl || !amountEl || !typeSelect) return;
 
     const desc = descEl.textContent.trim();
     const type = typeSelect.value;
+    const dateValue = dateInput ? dateInput.value : "";
 
     const parsed = parseEditableMoneyToNumber(amountEl.textContent);
     if (parsed === null) {
@@ -393,7 +416,7 @@ async function saveTransaction(e) {
                 "Content-Type": "application/json",
                 ...csrfHeaders(),
             },
-            body: JSON.stringify({ description: desc, amount: parsed, type }),
+            body: JSON.stringify({ description: desc, amount: parsed, type, date: dateValue }),
         });
 
         const responseData = await res.json().catch(() => ({}));
@@ -420,6 +443,16 @@ async function saveTransaction(e) {
         amountEl.dataset.moneyValue = String(parsed);
         amountEl.textContent = formatMoney(parsed);
         applyAmountTypeDataset(amountEl, type);
+
+        if (responseData.date) {
+            row.dataset.date = responseData.date;
+            if (dateInput) dateInput.value = responseData.date;
+            const dateLabel = row.querySelector(".tx-date-label");
+            if (dateLabel && responseData.date_label) {
+                dateLabel.textContent = responseData.date_label;
+            }
+        }
+        resortTransactionRows();
 
         const successMsg = responseData?.message || "Transaction updated successfully";
         showToast(successMsg, "success");
@@ -502,15 +535,20 @@ function handleAddTransactionForm(form) {
             list.appendChild(newRow);
             attachRowListeners(newRow);
             formatRowMoney(newRow);
+            resortTransactionRows();
 
             showToast("Transaction added!", "success");
 
-            await persistTransactionOrder(list);
             await updateChartData();
             await updateSummaryUI();
             document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
 
+            const dateInput = form.querySelector("#tx-date-input");
+            const todayValue = dateInput ? dateInput.max : "";
             form.reset();
+            // form.reset() would blank the date field back to nothing —
+            // put it back on today rather than leaving it empty.
+            if (dateInput && todayValue) dateInput.value = todayValue;
         } catch (err) {
             console.error("Error adding transaction:", err);
             showToast("Error adding transaction", "error");
@@ -549,7 +587,13 @@ function initTransactions() {
     const addTransactionForm = document.querySelector('form[action*="add_transaction"]');
     if (addTransactionForm) handleAddTransactionForm(addTransactionForm);
 
-    initTransactionSortable();
+    const dateInput = document.getElementById("tx-date-input");
+    if (dateInput) {
+        const today = new Date().toISOString().split("T")[0];
+        dateInput.value = today;
+        if (!dateInput.max) dateInput.max = today;
+    }
+
     updateSummaryUI();
 
     document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
