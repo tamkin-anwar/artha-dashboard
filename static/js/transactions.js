@@ -560,11 +560,11 @@ function handleAddTransactionForm(form) {
             document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
 
             const dateInput = form.querySelector("#tx-date-input");
-            const todayValue = dateInput ? dateInput.max : "";
+            const todayValue = new Date().toISOString().split("T")[0];
             form.reset();
             // form.reset() would blank the date field back to nothing —
             // put it back on today rather than leaving it empty.
-            if (dateInput && todayValue) dateInput.value = todayValue;
+            if (dateInput) dateInput.value = todayValue;
         } catch (err) {
             console.error("Error adding transaction:", err);
             showToast("Error adding transaction", "error");
@@ -605,9 +605,7 @@ function initTransactions() {
 
     const dateInput = document.getElementById("tx-date-input");
     if (dateInput) {
-        const today = new Date().toISOString().split("T")[0];
-        dateInput.value = today;
-        if (!dateInput.max) dateInput.max = today;
+        dateInput.value = new Date().toISOString().split("T")[0];
     }
 
     updateSummaryUI();
