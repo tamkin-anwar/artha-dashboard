@@ -37,9 +37,11 @@
                 data-month="{{ m.value }}"
             >
                 {{ m.label }}{% if m.is_current %} <span style="color:var(--gold);">&#9679;</span>{% endif %}
-                <span style="display:block; font-size:10px; margin-top:2px; color:{{ 'var(--emerald)' if m.net >= 0 else 'var(--red)' }};">
-                    {{ '+' if m.net >= 0 else '-' }}${{ '%.0f'|format(m.net|abs) }}
-                </span>
+                {% if m.net != 0 %}
+                    <span style="display:block; font-size:10px; margin-top:2px; color:{{ 'var(--emerald)' if m.net >= 0 else 'var(--red)' }};">
+                        {{ '+' if m.net >= 0 else '-' }}${{ '%.0f'|format(m.net|abs) }}
+                    </span>
+                {% endif %}
             </a>
         {% endfor %}
     </div>

@@ -453,9 +453,16 @@ def finance_page():
     biggest_day = max(day_totals.items(), key=lambda kv: kv[1])[0] if day_totals else None
     biggest_day_label = f"The {_ordinal(biggest_day)}" if biggest_day else None
 
-    # 6-month trend for the bar chart (oldest -> newest).
+    # 6-month trend for the bar chart (oldest -> newest). Trim any leading
+    # months with no transactions so a new user with 1-2 months of history
+    # doesn't see 4-5 empty bars — but still cap the window at 6 months.
+    last_6 = last_12[-6:]
+    months_with_data = [i for i, d in enumerate(last_6) if bucket_for(d)["txs"]]
+    trend_start = months_with_data[0] if months_with_data else len(last_6) - 1
+    trend_months = last_6[trend_start:]
+
     trend_data = []
-    for d in last_12[-6:]:
+    for d in trend_months:
         b = bucket_for(d)
         trend_data.append({
             "value": d.strftime("%Y-%m"),
