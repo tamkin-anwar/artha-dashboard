@@ -68,6 +68,8 @@
         {% set is_dashboard_active = request.endpoint == 'dashboard.index' and not current_view %}
         {% set is_finance_active = request.endpoint == 'dashboard.index' and current_view == 'finance' %}
         {% set is_notes_active = request.endpoint == 'dashboard.index' and current_view == 'notes' %}
+        {% set is_calculator_active = request.endpoint == 'dashboard.index' and current_view == 'calculator' %}
+        {% set is_calendar_active = request.endpoint == 'dashboard.index' and current_view == 'calendar' %}
         {% set is_scenarios_active = request.endpoint and 'scenario' in request.endpoint %}
 
         <div style="display:flex; min-height:100vh;">
@@ -97,6 +99,12 @@
                     </a>
                     <a href="{{ url_for('dashboard.index') }}#widget-ai" class="nav-link" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
                         <span aria-hidden="true">🤖</span> AI Assistant
+                    </a>
+                    <a href="{{ url_for('dashboard.index', view='calculator') }}" class="nav-link {{ 'nav-active' if is_calculator_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">🧮</span> Calculator
+                    </a>
+                    <a href="{{ url_for('dashboard.index', view='calendar') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">📅</span> Calendar
                     </a>
                 </nav>
 
@@ -200,6 +208,8 @@
                     <a href="{{ url_for('dashboard.index', view='finance') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">💸 Finance</a>
                     <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">📝 Notes</a>
                     <a href="{{ url_for('dashboard.index') }}#widget-ai" class="nav-link" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🤖 AI Assistant</a>
+                    <a href="{{ url_for('dashboard.index', view='calculator') }}" class="nav-link {{ 'nav-active' if is_calculator_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🧮 Calculator</a>
+                    <a href="{{ url_for('dashboard.index', view='calendar') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">📅 Calendar</a>
 
                     <div style="margin:10px 0; height:1px; background:var(--border-subtle);"></div>
 
