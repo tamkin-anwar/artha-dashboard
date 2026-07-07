@@ -83,16 +83,29 @@ export function showToast(message, type = "info", duration = 3000, options = {})
         document.body.appendChild(container);
     }
 
+    const validType = TYPE_ICONS[type] ? type : "info";
+    const content = resolveContent(message, validType);
+
+    // If a toast with this exact (resolved) message is already visible,
+    // don't stack a second one — just reset its auto-dismiss timer. This
+    // is what keeps rapid-fire identical toasts (e.g. saving several
+    // transactions back to back) from piling up.
+    const existing = toastQueue.find(
+        (t) => t.dataset.toastMessage === content.message && !t.classList.contains("exit")
+    );
+    if (existing && typeof existing.__resetTimer === "function") {
+        existing.__resetTimer(duration);
+        return existing;
+    }
+
     // Limit queue size
     if (toastQueue.length >= MAX_TOASTS) {
         const oldestToast = toastQueue.shift();
         if (oldestToast) removeToast(oldestToast);
     }
 
-    const validType = TYPE_ICONS[type] ? type : "info";
-    const content = resolveContent(message, validType);
-
     const toast = document.createElement("div");
+    toast.dataset.toastMessage = content.message;
     toast.className = `toast toast-${validType}`;
     toast.setAttribute("role", "alert");
     toast.tabIndex = 0;
@@ -181,15 +194,32 @@ export function showToast(message, type = "info", duration = 3000, options = {})
 
     // Auto-remove (if duration > 0), pause on hover
     let autoRemoveTimeout = null;
+    let currentDuration = duration;
 
-    const startTimer = () => {
-        if (duration <= 0) return;
-        autoRemoveTimeout = setTimeout(() => removeToast(toast), duration);
+    const startTimer = (d = currentDuration) => {
+        currentDuration = d;
+        if (d <= 0) return;
+        autoRemoveTimeout = setTimeout(() => removeToast(toast), d);
     };
 
     const stopTimer = () => {
         if (autoRemoveTimeout) clearTimeout(autoRemoveTimeout);
         autoRemoveTimeout = null;
+    };
+
+    // Called instead of creating a duplicate toast when one with the same
+    // message is already on screen — restarts both the dismiss timer and
+    // the draining progress bar so it reads as "still fresh", not stale.
+    toast.__resetTimer = (newDuration = currentDuration) => {
+        stopTimer();
+        const progress = toast.querySelector(".toast-progress");
+        if (progress && newDuration > 0) {
+            progress.style.animation = "none";
+            void progress.offsetWidth;
+            progress.style.animationDuration = `${newDuration}ms`;
+            progress.style.animation = "";
+        }
+        startTimer(newDuration);
     };
 
     startTimer();

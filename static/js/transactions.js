@@ -461,6 +461,13 @@ async function saveTransaction(e) {
         applyAmountTypeDataset(amountEl, type);
 
         if (responseData.date) {
+            // Update the row's underlying date + visible label in place —
+            // deliberately NOT calling resortTransactionRows() here. Moving
+            // the row to its new date position mid-edit is disorienting;
+            // the row keeps its current spot until the next full re-sort
+            // (page load, or a new transaction being added). The stored
+            // data-date is still correct, so sorting on that next trigger
+            // lands it in the right place.
             row.dataset.date = responseData.date;
             if (dateInput) dateInput.value = responseData.date;
             const dateLabel = row.querySelector(".tx-date-label");
@@ -468,10 +475,9 @@ async function saveTransaction(e) {
                 dateLabel.textContent = responseData.date_label;
             }
         }
-        resortTransactionRows();
 
         const successMsg = responseData?.message || "Transaction updated successfully";
-        showToast(successMsg, "success");
+        showToast(successMsg, "success", 1500);
         if (ariaLiveRegion) ariaLiveRegion.textContent = successMsg;
 
         await updateChartData();
@@ -553,7 +559,7 @@ function handleAddTransactionForm(form) {
             formatRowMoney(newRow);
             resortTransactionRows();
 
-            showToast("Transaction added!", "success");
+            showToast("Transaction added!", "success", 1500);
 
             await updateChartData();
             await updateSummaryUI();
