@@ -43,7 +43,7 @@
         <div class="glass-card" style="padding:16px;">
             <p
                 class="scenario-money stat-number"
-                style="font-size:20px; color:{% if immediate_cash_impact > 0 %}var(--emerald){% elif immediate_cash_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
+                style="font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:{% if immediate_cash_impact > 0 %}var(--emerald){% elif immediate_cash_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
                 data-money-value="{{ immediate_cash_impact }}"
                 data-money-signed="true"
             >{{ "%+.2f"|format(immediate_cash_impact) }}</p>
@@ -52,7 +52,7 @@
         <div class="glass-card" style="padding:16px;">
             <p
                 class="scenario-money stat-number"
-                style="font-size:20px; color:{% if monthly_cash_flow > 0 %}var(--emerald){% elif monthly_cash_flow < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
+                style="font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:{% if monthly_cash_flow > 0 %}var(--emerald){% elif monthly_cash_flow < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
                 data-money-value="{{ monthly_cash_flow }}"
                 data-money-signed="true"
             >{{ "%+.2f"|format(monthly_cash_flow) }}</p>
@@ -61,7 +61,7 @@
         <div class="glass-card" style="padding:16px;">
             <p
                 class="scenario-money stat-number"
-                style="font-size:20px; color:{% if scenario.net_monthly_impact > 0 %}var(--emerald){% elif scenario.net_monthly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
+                style="font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:{% if scenario.net_monthly_impact > 0 %}var(--emerald){% elif scenario.net_monthly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
                 data-money-value="{{ scenario.net_monthly_impact }}"
                 data-money-signed="true"
             >{{ "%+.2f"|format(scenario.net_monthly_impact) }}</p>
@@ -70,7 +70,7 @@
         <div class="glass-card" style="padding:16px;">
             <p
                 class="scenario-money stat-number"
-                style="font-size:20px; color:{% if scenario.net_yearly_impact > 0 %}var(--emerald){% elif scenario.net_yearly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
+                style="font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:{% if scenario.net_yearly_impact > 0 %}var(--emerald){% elif scenario.net_yearly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
                 data-money-value="{{ scenario.net_yearly_impact }}"
                 data-money-signed="true"
             >{{ "%+.2f"|format(scenario.net_yearly_impact) }}</p>

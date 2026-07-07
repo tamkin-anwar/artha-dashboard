@@ -1,46 +1,47 @@
 <aside class="w-full lg:w-[280px] shrink-0 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto" style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:16px; padding:16px;">
-    <nav class="flex flex-wrap gap-1.5 mb-4" aria-label="Filter scenarios by status">
-        <a
-            href="{{ url_for('scenarios.index') }}"
-            style="padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; text-decoration:none; {% if not status_filter %}background:var(--gold); color:#000;{% else %}background:rgba(255,255,255,0.05); color:var(--text-secondary);{% endif %}"
-        >
-            All
-        </a>
-        {% for st in valid_statuses %}
-            <a
-                href="{{ url_for('scenarios.index', status=st) }}"
-                class="capitalize"
-                style="padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; text-decoration:none; {% if status_filter == st %}background:var(--gold); color:#000;{% else %}background:rgba(255,255,255,0.05); color:var(--text-secondary);{% endif %}"
-            >
-                {{ st }}
-            </a>
-        {% endfor %}
-    </nav>
-
     {% if scenarios %}
         <div class="space-y-2">
             {% for s in scenarios %}
-                {% set v = verdicts[s.id] %}
-                <a
-                    href="{{ url_for('scenarios.detail', scenario_id=s.id) }}"
-                    style="display:block; border-radius:12px; padding:14px; text-decoration:none; border:1px solid {% if s.id == active_id %}rgba(212,168,67,0.4){% else %}var(--border-subtle){% endif %}; background:{% if s.id == active_id %}var(--bg-card){% else %}rgba(255,255,255,0.02){% endif %};"
+                <div
+                    class="scenario-list-card"
+                    style="position:relative; border-radius:12px; padding:14px; border:1px solid {% if s.id == active_id %}rgba(212,168,67,0.4){% else %}var(--border-subtle){% endif %}; background:{% if s.id == active_id %}var(--bg-card){% else %}rgba(255,255,255,0.02){% endif %};"
                 >
-                    <div class="flex items-start justify-between gap-2 mb-1.5">
-                        <p style="font-size:14px; font-weight:600; color:var(--text-primary); margin:0;" class="truncate">{{ s.title }}</p>
-                        <span class="{% if v.label == 'do_it' %}badge-do-it{% elif v.label == 'bad_idea' %}badge-bad{% else %}badge-wait{% endif %}" style="flex-shrink:0; font-size:10px; padding:1px 8px; text-transform:uppercase; letter-spacing:0.05em;">
-                            {% if v.label == 'do_it' %}Do it{% elif v.label == 'bad_idea' %}Bad idea{% else %}Review{% endif %}
-                        </span>
-                    </div>
+                    <a
+                        href="{{ url_for('scenarios.detail', scenario_id=s.id) }}"
+                        style="position:absolute; inset:0; z-index:1;"
+                        aria-label="View {{ s.title }}"
+                    ></a>
+
+                    <p style="font-size:14px; font-weight:600; color:var(--text-primary); margin:0 24px 6px 0;" class="truncate">{{ s.title }}</p>
+
                     <div class="flex items-center justify-between gap-2">
                         <span class="eyebrow" style="font-size:10px;">{{ s.category }}</span>
                         <span
                             class="scenario-money"
-                            style="font-size:12px; font-weight:600; color:{% if s.net_yearly_impact > 0 %}var(--emerald){% elif s.net_yearly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
-                            data-money-value="{{ s.net_yearly_impact }}"
+                            style="font-size:12px; font-weight:600; color:{% if s.net_monthly_impact > 0 %}var(--emerald){% elif s.net_monthly_impact < 0 %}var(--red){% else %}var(--text-secondary){% endif %};"
+                            data-money-value="{{ s.net_monthly_impact }}"
                             data-money-signed="true"
-                        >{{ "%+.2f"|format(s.net_yearly_impact) }}</span>
+                            data-money-suffix="/mo"
+                        >{{ "%+.2f"|format(s.net_monthly_impact) }}/mo</span>
                     </div>
-                </a>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('scenarios.delete', scenario_id=s.id) }}"
+                        class="scenario-delete-form"
+                        style="position:absolute; top:8px; right:8px; z-index:2;"
+                    >
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button
+                            type="submit"
+                            title="Delete"
+                            aria-label="Delete scenario"
+                            style="background:none; border:none; color:var(--text-muted); font-size:13px; line-height:1; cursor:pointer; padding:4px;"
+                        >
+                            🗑️
+                        </button>
+                    </form>
+                </div>
             {% endfor %}
         </div>
     {% else %}
