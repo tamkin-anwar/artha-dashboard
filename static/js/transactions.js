@@ -134,15 +134,12 @@ function resortTransactionRows() {
     const rows = Array.from(list.querySelectorAll("li[data-id]"));
     if (!rows.length) return;
 
-    rows.sort((a, b) => {
-        const dateA = a.dataset.date || "";
-        const dateB = b.dataset.date || "";
-        if (dateA === dateB) return 0;
-        return dateA < dateB ? 1 : -1; // newest first
-    });
+    rows.sort((a, b) => (a.dataset.date || "").localeCompare(b.dataset.date || "")); // oldest first
 
-    // Rebuild from scratch: drop stale dividers, then re-append rows with
-    // a fresh divider inserted wherever the date changes.
+    // Rebuild from scratch: drop stale dividers, then re-append rows in
+    // the new ascending order, with a fresh divider inserted wherever the
+    // date changes (i.e. above the first row of each date group — now the
+    // oldest group at the top, newest group at the bottom).
     list.querySelectorAll(".tx-date-divider").forEach((el) => el.remove());
 
     let lastDate = null;
