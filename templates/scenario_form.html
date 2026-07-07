@@ -3,16 +3,41 @@
 {% block content %}
 
 {% set whatif_presets = {
-    'vacation':  {'title': 'Vacation', 'category': 'travel', 'one_time_cost': '2500.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 3, 'emotional_value': 8, 'description': 'A getaway trip — flights, hotel, food, the works.'},
-    'dinner':    {'title': 'Expensive dinner', 'category': 'lifestyle', 'one_time_cost': '200.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 1, 'emotional_value': 6, 'description': 'A nice night out to celebrate or just because.'},
-    'car':       {'title': 'Buy a car', 'category': 'purchase', 'one_time_cost': '30000.00', 'monthly_cost': '400.00', 'monthly_savings': '0.00', 'financial_risk': 6, 'emotional_value': 7, 'description': 'New wheels — down payment plus the monthly loan payment.'},
-    'invest':    {'title': 'Invest $500/mo more', 'category': 'investment', 'one_time_cost': '0.00', 'monthly_cost': '500.00', 'monthly_savings': '0.00', 'financial_risk': 4, 'emotional_value': 6, 'description': 'Redirect more of your paycheck into long-term investments.'},
-    'wedding':   {'title': 'Save for wedding', 'category': 'lifestyle', 'one_time_cost': '0.00', 'monthly_cost': '800.00', 'monthly_savings': '0.00', 'financial_risk': 3, 'emotional_value': 9, 'description': 'Setting aside money each month for the big day.'},
-    'debt':      {'title': 'Pay off debt early', 'category': 'other', 'one_time_cost': '5000.00', 'monthly_cost': '0.00', 'monthly_savings': '100.00', 'financial_risk': 2, 'emotional_value': 7, 'description': 'An extra lump-sum payment to close out a loan sooner and cut future interest.'},
-    'move':      {'title': 'Move apartments', 'category': 'housing', 'one_time_cost': '2000.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 4, 'emotional_value': 6, 'description': 'Deposit, moving costs, and the hassle of a new place.'},
-    'business':  {'title': 'Start a side business', 'category': 'career', 'one_time_cost': '1000.00', 'monthly_cost': '100.00', 'monthly_savings': '0.00', 'financial_risk': 6, 'emotional_value': 8, 'description': 'Startup costs plus ongoing expenses while it gets off the ground.'},
+    'vacation':  {'title': 'Vacation', 'category': 'Trip / Vacation', 'one_time_cost': '2500.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 3, 'emotional_value': 8, 'description': 'A getaway trip — flights, hotel, food, the works.'},
+    'dinner':    {'title': 'Expensive dinner', 'category': 'Food & Dining', 'one_time_cost': '200.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 1, 'emotional_value': 6, 'description': 'A nice night out to celebrate or just because.'},
+    'car':       {'title': 'Buy a car', 'category': 'Transport', 'one_time_cost': '30000.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 6, 'emotional_value': 7, 'description': 'New wheels — the purchase price.'},
+    'invest':    {'title': 'Invest $500/mo more', 'category': 'Investment', 'one_time_cost': '0.00', 'monthly_cost': '0.00', 'monthly_savings': '500.00', 'financial_risk': 4, 'emotional_value': 6, 'description': 'Redirect more of your paycheck into long-term investments.'},
+    'wedding':   {'title': 'Save for wedding', 'category': 'Savings Goal', 'one_time_cost': '0.00', 'monthly_cost': '0.00', 'monthly_savings': '800.00', 'financial_risk': 3, 'emotional_value': 9, 'description': 'Setting aside money each month for the big day.'},
+    'debt':      {'title': 'Pay off debt early', 'category': 'Debt Payoff', 'one_time_cost': '5000.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 2, 'emotional_value': 7, 'description': 'An extra lump-sum payment to close out a loan sooner and cut future interest.'},
+    'move':      {'title': 'Move apartments', 'category': 'Housing', 'one_time_cost': '2000.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 4, 'emotional_value': 6, 'description': 'Deposit, moving costs, and the hassle of a new place.'},
+    'business':  {'title': 'Start a side business', 'category': 'Career Change', 'one_time_cost': '1000.00', 'monthly_cost': '0.00', 'monthly_savings': '0.00', 'financial_risk': 6, 'emotional_value': 8, 'description': 'Startup costs to get it off the ground.'},
 } %}
 {% set preset = whatif_presets.get(request.args.get('preset')) if not scenario else None %}
+
+{% set category_options = ['Trip / Vacation', 'Food & Dining', 'Housing', 'Transport', 'Investment', 'Savings Goal', 'Debt Payoff', 'Career Change', 'Other'] %}
+{% set current_category = scenario.category if scenario else (preset.category if preset else 'Other') %}
+
+{% if scenario %}
+    {% set init_one_time = scenario.one_time_cost %}
+    {% set init_monthly_cost = scenario.monthly_cost %}
+    {% set init_monthly_savings = scenario.monthly_savings %}
+{% elif preset %}
+    {% set init_one_time = preset.one_time_cost %}
+    {% set init_monthly_cost = preset.monthly_cost %}
+    {% set init_monthly_savings = preset.monthly_savings %}
+{% else %}
+    {% set init_one_time = '0.00' %}
+    {% set init_monthly_cost = '0.00' %}
+    {% set init_monthly_savings = '0.00' %}
+{% endif %}
+
+{% if init_monthly_savings|float > 0 %}
+    {% set initial_cost_tab = 'monthly_savings' %}
+{% elif init_monthly_cost|float > 0 %}
+    {% set initial_cost_tab = 'monthly_cost' %}
+{% else %}
+    {% set initial_cost_tab = 'one_time_cost' %}
+{% endif %}
 
 <div class="max-w-2xl mx-auto">
 
@@ -40,6 +65,7 @@
 
     <div class="glass-card" style="padding:24px;">
         <form
+            id="scenario-form"
             method="POST"
             action="{{ url_for('scenarios.edit', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.add') }}"
             class="space-y-4"
@@ -60,20 +86,17 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="category" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Category</label>
-                    <input
-                        id="category" name="category" type="text" list="category-options" maxlength="50"
-                        value="{{ scenario.category if scenario else (preset.category if preset else 'other') }}"
+                    <select
+                        id="category" name="category"
                         class="field-input w-full"
                     >
-                    <datalist id="category-options">
-                        <option value="housing">
-                        <option value="career">
-                        <option value="travel">
-                        <option value="purchase">
-                        <option value="investment">
-                        <option value="lifestyle">
-                        <option value="other">
-                    </datalist>
+                        {% if scenario and scenario.category not in category_options %}
+                            <option value="{{ scenario.category }}" selected>{{ scenario.category }}</option>
+                        {% endif %}
+                        {% for opt in category_options %}
+                            <option value="{{ opt }}" {% if current_category == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <div>
@@ -100,45 +123,66 @@
                 >{{ scenario.description if scenario else (preset.description if preset else '') }}</textarea>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                    <label for="one_time_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">One-time cost</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
-                        <input
-                            id="one_time_cost" name="one_time_cost" type="number" step="0.01" min="0"
-                            value="{{ '%.2f'|format(scenario.one_time_cost) if scenario else (preset.one_time_cost if preset else '0.00') }}"
-                            class="field-input w-full"
-                            style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
-                        >
-                    </div>
+            <div>
+                <label style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:6px;">Cost &amp; Impact</label>
+
+                <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                    <button type="button" class="cost-tab-btn {{ 'cost-tab-active' if initial_cost_tab == 'one_time_cost' }}" data-tab="one_time_cost">
+                        One-time expense
+                    </button>
+                    <button type="button" class="cost-tab-btn {{ 'cost-tab-active' if initial_cost_tab == 'monthly_cost' }}" data-tab="monthly_cost">
+                        Monthly expense
+                    </button>
+                    <button type="button" class="cost-tab-btn {{ 'cost-tab-active' if initial_cost_tab == 'monthly_savings' }}" data-tab="monthly_savings">
+                        Monthly savings
+                    </button>
                 </div>
 
-                <div>
-                    <label for="monthly_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly cost</label>
+                <div class="cost-tab-panel" data-panel="one_time_cost" style="{{ '' if initial_cost_tab == 'one_time_cost' else 'display:none;' }}">
+                    <label for="cost_input_one_time_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Total cost</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
                         <input
-                            id="monthly_cost" name="monthly_cost" type="number" step="0.01" min="0"
-                            value="{{ '%.2f'|format(scenario.monthly_cost) if scenario else (preset.monthly_cost if preset else '0.00') }}"
+                            type="number" id="cost_input_one_time_cost" step="0.01" min="0"
+                            value="{{ '%.2f'|format(init_one_time|float) }}"
                             class="field-input w-full"
                             style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
                         >
                     </div>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">A single payment — flights, purchases, deposits</p>
                 </div>
 
-                <div>
-                    <label for="monthly_savings" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly savings</label>
+                <div class="cost-tab-panel" data-panel="monthly_cost" style="{{ '' if initial_cost_tab == 'monthly_cost' else 'display:none;' }}">
+                    <label for="cost_input_monthly_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly amount</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
                         <input
-                            id="monthly_savings" name="monthly_savings" type="number" step="0.01" min="0"
-                            value="{{ '%.2f'|format(scenario.monthly_savings) if scenario else (preset.monthly_savings if preset else '0.00') }}"
+                            type="number" id="cost_input_monthly_cost" step="0.01" min="0"
+                            value="{{ '%.2f'|format(init_monthly_cost|float) }}"
                             class="field-input w-full"
                             style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
                         >
                     </div>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Recurring cost each month — rent, subscriptions, loan payments</p>
                 </div>
+
+                <div class="cost-tab-panel" data-panel="monthly_savings" style="{{ '' if initial_cost_tab == 'monthly_savings' else 'display:none;' }}">
+                    <label for="cost_input_monthly_savings" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly amount</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
+                        <input
+                            type="number" id="cost_input_monthly_savings" step="0.01" min="0"
+                            value="{{ '%.2f'|format(init_monthly_savings|float) }}"
+                            class="field-input w-full"
+                            style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
+                        >
+                    </div>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Money set aside each month toward a goal</p>
+                </div>
+
+                <input type="hidden" name="one_time_cost" id="hidden_one_time_cost" value="{{ '%.2f'|format(init_one_time|float) }}">
+                <input type="hidden" name="monthly_cost" id="hidden_monthly_cost" value="{{ '%.2f'|format(init_monthly_cost|float) }}">
+                <input type="hidden" name="monthly_savings" id="hidden_monthly_savings" value="{{ '%.2f'|format(init_monthly_savings|float) }}">
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -225,4 +269,47 @@
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    var form = document.getElementById('scenario-form');
+    if (!form) return;
+
+    var tabButtons = form.querySelectorAll('.cost-tab-btn');
+    var panels = form.querySelectorAll('.cost-tab-panel');
+    var hidden = {
+        one_time_cost: document.getElementById('hidden_one_time_cost'),
+        monthly_cost: document.getElementById('hidden_monthly_cost'),
+        monthly_savings: document.getElementById('hidden_monthly_savings'),
+    };
+    var visible = {
+        one_time_cost: document.getElementById('cost_input_one_time_cost'),
+        monthly_cost: document.getElementById('cost_input_monthly_cost'),
+        monthly_savings: document.getElementById('cost_input_monthly_savings'),
+    };
+
+    function activateTab(tab) {
+        tabButtons.forEach(function (btn) {
+            btn.classList.toggle('cost-tab-active', btn.dataset.tab === tab);
+        });
+        panels.forEach(function (panel) {
+            panel.style.display = panel.dataset.panel === tab ? '' : 'none';
+        });
+    }
+
+    tabButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            activateTab(btn.dataset.tab);
+        });
+    });
+
+    form.addEventListener('submit', function () {
+        var activeBtn = form.querySelector('.cost-tab-btn.cost-tab-active');
+        var activeTab = activeBtn ? activeBtn.dataset.tab : 'one_time_cost';
+        Object.keys(hidden).forEach(function (key) {
+            hidden[key].value = key === activeTab ? (visible[key].value || '0') : '0';
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -171,6 +171,27 @@ h1, h2, h3, .stat-number {
   border-color: rgba(212,168,67,0.4) !important;
 }
 
+/* Scenario form — cost type tabs */
+.cost-tab-btn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.cost-tab-btn:hover {
+  background: var(--bg-hover);
+}
+.cost-tab-btn.cost-tab-active {
+  background: var(--gold);
+  color: #000;
+  border-color: var(--gold);
+}
+
 /* Tables — no alternating rows, subtle row dividers */
 .plain-table tr {
   border-bottom: 1px solid var(--border-subtle);
