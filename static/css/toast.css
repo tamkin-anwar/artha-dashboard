@@ -105,21 +105,13 @@
     }
 }
 
-/* Define theme variables for light and dark modes */
+/* Theme variables — matches the premium dark palette in style.css */
 :root {
-    --toast-bg: #2d3748;
-    --toast-text-color: #fff;
-    --toast-success-bg: #10b981;
+    --toast-bg: #1e2435;
+    --toast-text-color: #f0ede8;
+    --toast-success-bg: #22c55e;
     --toast-error-bg: #ef4444;
-    --text-primary: #1f2937; /* dark slate for light theme */
-}
-
-.dark {
-    --toast-bg: #1a202c;
-    --toast-text-color: #f7fafc;
-    --toast-success-bg: #059669;
-    --toast-error-bg: #dc2626;
-    --text-primary: #f3f4f6; /* light gray for dark theme */
+    --text-primary: #f0ede8;
 }
 
 .chart-text {

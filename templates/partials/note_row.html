@@ -1,13 +1,27 @@
 <li
+    class="note-row glass-card"
     data-id="{{ note.id }}"
-    class="note-row bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-600 flex items-center space-x-2"
-    >
-    <button
-        type="button"
-        class="note-handle text-gray-400 hover:text-gray-200 cursor-grab active:cursor-grabbing px-1"
-        aria-label="Drag note"
-        title="Drag"
-    >≡</button>
+    style="padding:20px; position:relative;"
+>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <button
+            type="button"
+            class="note-handle"
+            style="background:none; border:none; cursor:grab; color:var(--text-muted); font-size:14px; padding:0;"
+            title="Drag to reorder"
+            aria-label="Drag to reorder"
+        >☰</button>
+
+        <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" class="note-delete-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button
+                type="submit"
+                style="background:none; border:none; color:var(--text-muted); font-size:16px; line-height:1; cursor:pointer;"
+                title="Delete"
+                aria-label="Delete note"
+            >🗑️</button>
+        </form>
+    </div>
 
     <div
         contenteditable="true"
@@ -17,16 +31,7 @@
         tabindex="0"
         aria-label="Edit note"
         spellcheck="true"
-        class="editable-note flex-grow outline-none hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
+        class="editable-note"
+        style="font-weight:600; color:var(--text-primary); outline:none; border-radius:6px; padding:2px;"
     >{{ note.content }}</div>
-
-    <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" class="note-delete-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button
-        type="submit"
-        class="text-red-500 hover:text-red-700 text-xl leading-none"
-        title="Delete"
-        aria-label="Delete note"
-        >🗑️</button>
-    </form>
 </li>

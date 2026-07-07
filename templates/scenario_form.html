@@ -2,210 +2,215 @@
 {% block title %}{{ "Edit Scenario" if mode == "edit" else "New Scenario" }}{% endblock %}
 {% block content %}
 
-<main class="min-h-screen bg-[#0a0e17]" role="main">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+<div class="max-w-2xl mx-auto">
 
-        <a
-            href="{{ url_for('scenarios.detail', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.index') }}"
-            class="inline-block text-xs text-gray-500 hover:text-gray-300 transition mb-4"
+    <a
+        href="{{ url_for('scenarios.detail', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.index') }}"
+        style="display:inline-block; font-size:12px; color:var(--text-secondary); text-decoration:none; margin-bottom:16px;"
+    >
+        &larr; Scenarios
+    </a>
+
+    <div class="eyebrow" style="margin-bottom:6px;">SCENARIOS</div>
+    <h1 style="font-family:'Fraunces',serif; font-size:26px; font-weight:600; color:var(--text-primary); margin:0 0 24px;">{{ "Edit Scenario" if mode == "edit" else "New Scenario" }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div aria-live="polite" role="status" class="mb-4">
+                {% for category, message in messages %}
+                    <p class="flash-message text-sm text-center mb-2" style="color: {% if category == 'success' %}var(--emerald){% elif category == 'error' %}var(--red){% else %}var(--sky){% endif %};">
+                        {{ message|safe }}
+                    </p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="glass-card" style="padding:24px;">
+        <form
+            method="POST"
+            action="{{ url_for('scenarios.edit', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.add') }}"
+            class="space-y-4"
+            role="form"
         >
-            &larr; Scenarios
-        </a>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <h1 class="text-2xl font-bold text-white mb-6">{{ "Edit Scenario" if mode == "edit" else "New Scenario" }}</h1>
+            <div>
+                <label for="title" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Title</label>
+                <input
+                    id="title" name="title" type="text" required autofocus maxlength="150"
+                    value="{{ scenario.title if scenario else '' }}"
+                    placeholder="e.g. Move to a new apartment"
+                    class="field-input w-full"
+                >
+            </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div aria-live="polite" role="status" class="mb-4">
-                    {% for category, message in messages %}
-                        <p class="flash-message text-sm text-center mb-2 {% if category == 'success' %}text-green-400{% elif category == 'error' %}text-red-400{% else %}text-blue-400{% endif %}">
-                            {{ message|safe }}
-                        </p>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <div class="rounded-2xl bg-[#131a26] border border-white/5 p-6 shadow-xl">
-            <form
-                method="POST"
-                action="{{ url_for('scenarios.edit', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.add') }}"
-                class="space-y-4"
-                role="form"
-            >
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="title" class="block text-sm font-medium text-gray-300 mb-1">Title</label>
+                    <label for="category" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Category</label>
                     <input
-                        id="title" name="title" type="text" required autofocus maxlength="150"
-                        value="{{ scenario.title if scenario else '' }}"
-                        placeholder="e.g. Move to a new apartment"
-                        class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
+                        id="category" name="category" type="text" list="category-options" maxlength="50"
+                        value="{{ scenario.category if scenario else 'other' }}"
+                        class="field-input w-full"
                     >
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="category" class="block text-sm font-medium text-gray-300 mb-1">Category</label>
-                        <input
-                            id="category" name="category" type="text" list="category-options" maxlength="50"
-                            value="{{ scenario.category if scenario else 'other' }}"
-                            class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                        >
-                        <datalist id="category-options">
-                            <option value="housing">
-                            <option value="career">
-                            <option value="travel">
-                            <option value="purchase">
-                            <option value="investment">
-                            <option value="lifestyle">
-                            <option value="other">
-                        </datalist>
-                    </div>
-
-                    <div>
-                        <label for="status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                        <select
-                            id="status" name="status"
-                            class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                        >
-                            {% for st in valid_statuses %}
-                                <option value="{{ st }}" {% if (scenario.status if scenario else 'active') == st %}selected{% endif %}>
-                                    {{ st|capitalize }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                    <datalist id="category-options">
+                        <option value="housing">
+                        <option value="career">
+                        <option value="travel">
+                        <option value="purchase">
+                        <option value="investment">
+                        <option value="lifestyle">
+                        <option value="other">
+                    </datalist>
                 </div>
 
                 <div>
-                    <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Description</label>
-                    <textarea
-                        id="description" name="description" rows="2"
-                        placeholder="What is this scenario about?"
-                        class="w-full p-3 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                    >{{ scenario.description if scenario else '' }}</textarea>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label for="one_time_cost" class="block text-sm font-medium text-gray-300 mb-1">One-time cost</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500 h-11 text-sm" data-currency-symbol>$</span>
-                            <input
-                                id="one_time_cost" name="one_time_cost" type="number" step="0.01" min="0"
-                                value="{{ '%.2f'|format(scenario.one_time_cost) if scenario else '0.00' }}"
-                                class="w-full h-11 pl-9 pr-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                            >
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="monthly_cost" class="block text-sm font-medium text-gray-300 mb-1">Monthly cost</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500 h-11 text-sm" data-currency-symbol>$</span>
-                            <input
-                                id="monthly_cost" name="monthly_cost" type="number" step="0.01" min="0"
-                                value="{{ '%.2f'|format(scenario.monthly_cost) if scenario else '0.00' }}"
-                                class="w-full h-11 pl-9 pr-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                            >
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="monthly_savings" class="block text-sm font-medium text-gray-300 mb-1">Monthly savings</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500 h-11 text-sm" data-currency-symbol>$</span>
-                            <input
-                                id="monthly_savings" name="monthly_savings" type="number" step="0.01" min="0"
-                                value="{{ '%.2f'|format(scenario.monthly_savings) if scenario else '0.00' }}"
-                                class="w-full h-11 pl-9 pr-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="start_date" class="block text-sm font-medium text-gray-300 mb-1">Start date</label>
-                        <input
-                            id="start_date" name="start_date" type="date"
-                            value="{{ scenario.start_date.isoformat() if scenario and scenario.start_date else '' }}"
-                            class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                        >
-                    </div>
-                    <div>
-                        <label for="end_date" class="block text-sm font-medium text-gray-300 mb-1">End date</label>
-                        <input
-                            id="end_date" name="end_date" type="date"
-                            value="{{ scenario.end_date.isoformat() if scenario and scenario.end_date else '' }}"
-                            class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                        >
-                    </div>
-                </div>
-
-                <div>
-                    <label for="priority" class="block text-sm font-medium text-gray-300 mb-1">Priority</label>
+                    <label for="status" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Status</label>
                     <select
-                        id="priority" name="priority"
-                        class="w-full h-11 px-4 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
+                        id="status" name="status"
+                        class="field-input w-full"
                     >
-                        {% for p in valid_priorities %}
-                            <option value="{{ p }}" {% if (scenario.priority if scenario else 'medium') == p %}selected{% endif %}>
-                                {{ p|capitalize }}
+                        {% for st in valid_statuses %}
+                            <option value="{{ st }}" {% if (scenario.status if scenario else 'active') == st %}selected{% endif %}>
+                                {{ st|capitalize }}
                             </option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="emotional_value" class="flex justify-between text-sm font-medium text-gray-300 mb-1">
-                            <span>Emotional value</span>
-                            <span class="text-white font-semibold"><span class="scenario-scale-value" data-for="emotional_value">{{ scenario.emotional_value if scenario else 5 }}</span>/10</span>
-                        </label>
+            <div>
+                <label for="description" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Description</label>
+                <textarea
+                    id="description" name="description" rows="2"
+                    placeholder="What is this scenario about?"
+                    class="field-input w-full"
+                >{{ scenario.description if scenario else '' }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="one_time_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">One-time cost</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
                         <input
-                            id="emotional_value" name="emotional_value" type="range" min="1" max="10" step="1"
-                            value="{{ scenario.emotional_value if scenario else 5 }}"
-                            class="w-full accent-[#2563eb]"
-                        >
-                    </div>
-                    <div>
-                        <label for="financial_risk" class="flex justify-between text-sm font-medium text-gray-300 mb-1">
-                            <span>Financial risk</span>
-                            <span class="text-white font-semibold"><span class="scenario-scale-value" data-for="financial_risk">{{ scenario.financial_risk if scenario else 5 }}</span>/10</span>
-                        </label>
-                        <input
-                            id="financial_risk" name="financial_risk" type="range" min="1" max="10" step="1"
-                            value="{{ scenario.financial_risk if scenario else 5 }}"
-                            class="w-full accent-[#2563eb]"
+                            id="one_time_cost" name="one_time_cost" type="number" step="0.01" min="0"
+                            value="{{ '%.2f'|format(scenario.one_time_cost) if scenario else '0.00' }}"
+                            class="field-input w-full"
+                            style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
                         >
                     </div>
                 </div>
 
                 <div>
-                    <label for="notes" class="block text-sm font-medium text-gray-300 mb-1">Notes</label>
-                    <textarea
-                        id="notes" name="notes" rows="3"
-                        placeholder="Anything else worth remembering about this decision..."
-                        class="w-full p-3 rounded-lg border border-white/10 bg-[#0a0e17] text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/60"
-                    >{{ scenario.notes if scenario else '' }}</textarea>
+                    <label for="monthly_cost" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly cost</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
+                        <input
+                            id="monthly_cost" name="monthly_cost" type="number" step="0.01" min="0"
+                            value="{{ '%.2f'|format(scenario.monthly_cost) if scenario else '0.00' }}"
+                            class="field-input w-full"
+                            style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
+                        >
+                    </div>
                 </div>
 
-                <div class="flex space-x-2 pt-2">
-                    <button type="submit" class="flex-1 h-11 rounded-lg bg-[#2563eb] text-white font-semibold text-sm hover:bg-blue-700 transition">
-                        {{ "Save" if mode == "edit" else "Create Scenario" }}
-                    </button>
-                    <a
-                        href="{{ url_for('scenarios.detail', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.index') }}"
-                        class="flex-1 h-11 flex items-center justify-center rounded-lg border border-white/10 text-gray-300 text-sm hover:bg-white/5 transition"
-                    >
-                        Cancel
-                    </a>
+                <div>
+                    <label for="monthly_savings" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Monthly savings</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm" style="color:var(--text-muted);" data-currency-symbol>$</span>
+                        <input
+                            id="monthly_savings" name="monthly_savings" type="number" step="0.01" min="0"
+                            value="{{ '%.2f'|format(scenario.monthly_savings) if scenario else '0.00' }}"
+                            class="field-input w-full"
+                            style="padding-left:2.25rem; font-family:'JetBrains Mono',monospace;"
+                        >
+                    </div>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="start_date" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Start date</label>
+                    <input
+                        id="start_date" name="start_date" type="date"
+                        value="{{ scenario.start_date.isoformat() if scenario and scenario.start_date else '' }}"
+                        class="field-input w-full"
+                    >
+                </div>
+                <div>
+                    <label for="end_date" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">End date</label>
+                    <input
+                        id="end_date" name="end_date" type="date"
+                        value="{{ scenario.end_date.isoformat() if scenario and scenario.end_date else '' }}"
+                        class="field-input w-full"
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label for="priority" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Priority</label>
+                <select
+                    id="priority" name="priority"
+                    class="field-input w-full"
+                >
+                    {% for p in valid_priorities %}
+                        <option value="{{ p }}" {% if (scenario.priority if scenario else 'medium') == p %}selected{% endif %}>
+                            {{ p|capitalize }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="emotional_value" class="flex justify-between" style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">
+                        <span>Emotional value</span>
+                        <span style="color:var(--text-primary); font-weight:600;"><span class="scenario-scale-value" data-for="emotional_value">{{ scenario.emotional_value if scenario else 5 }}</span>/10</span>
+                    </label>
+                    <input
+                        id="emotional_value" name="emotional_value" type="range" min="1" max="10" step="1"
+                        value="{{ scenario.emotional_value if scenario else 5 }}"
+                        class="w-full"
+                        style="accent-color: var(--gold);"
+                    >
+                </div>
+                <div>
+                    <label for="financial_risk" class="flex justify-between" style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">
+                        <span>Financial risk</span>
+                        <span style="color:var(--text-primary); font-weight:600;"><span class="scenario-scale-value" data-for="financial_risk">{{ scenario.financial_risk if scenario else 5 }}</span>/10</span>
+                    </label>
+                    <input
+                        id="financial_risk" name="financial_risk" type="range" min="1" max="10" step="1"
+                        value="{{ scenario.financial_risk if scenario else 5 }}"
+                        class="w-full"
+                        style="accent-color: var(--gold);"
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label for="notes" style="display:block; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Notes</label>
+                <textarea
+                    id="notes" name="notes" rows="3"
+                    placeholder="Anything else worth remembering about this decision..."
+                    class="field-input w-full"
+                >{{ scenario.notes if scenario else '' }}</textarea>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+                <button type="submit" class="btn-primary flex-1" style="height:44px;">
+                    {{ "Save" if mode == "edit" else "Create Scenario" }}
+                </button>
+                <a
+                    href="{{ url_for('scenarios.detail', scenario_id=scenario.id) if mode == 'edit' else url_for('scenarios.index') }}"
+                    class="btn-secondary flex-1"
+                    style="height:44px; display:flex; align-items:center; justify-content:center; text-decoration:none;"
+                >
+                    Cancel
+                </a>
+            </div>
+        </form>
     </div>
-</main>
+</div>
 {% endblock %}

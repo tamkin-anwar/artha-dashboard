@@ -1,26 +1,26 @@
-<div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-6 shadow">
-    <h2 class="text-lg font-semibold mb-4">📅 Calendar</h2>
-    <div id="calendar" class="text-sm bg-white dark:bg-gray-800 rounded overflow-hidden border dark:border-gray-600" role="grid" aria-label="Calendar">
-        <div class="flex justify-between items-center px-4 py-2 bg-gray-200 dark:bg-gray-700">
-        <button id="prevMonth" class="text-lg font-bold" aria-label="Previous Month">&lt;</button>
-        <div id="monthYear" class="text-lg font-semibold" aria-live="polite" aria-atomic="true"></div>
-        <button id="nextMonth" class="text-lg font-bold" aria-label="Next Month">&gt;</button>
+<div class="glass-card" style="padding:24px;">
+    <span class="eyebrow" style="display:block; margin-bottom:16px;">Calendar</span>
+    <div id="calendar" style="font-size:14px; background:var(--bg-sidebar); border:1px solid var(--border-subtle); border-radius:10px; overflow:hidden;" role="grid" aria-label="Calendar">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--bg-card);">
+            <button id="prevMonth" style="font-size:16px; font-weight:700; background:none; border:none; color:var(--text-primary); cursor:pointer;" aria-label="Previous Month">&lt;</button>
+            <div id="monthYear" style="font-size:15px; font-weight:600; color:var(--text-primary); font-family:'Fraunces',serif;" aria-live="polite" aria-atomic="true"></div>
+            <button id="nextMonth" style="font-size:16px; font-weight:700; background:none; border:none; color:var(--text-primary); cursor:pointer;" aria-label="Next Month">&gt;</button>
         </div>
-        <div class="grid grid-cols-7 text-center text-gray-700 dark:text-gray-300 font-semibold border-t border-gray-300 dark:border-gray-600">
-        <div role="columnheader">Sun</div>
-        <div role="columnheader">Mon</div>
-        <div role="columnheader">Tue</div>
-        <div role="columnheader">Wed</div>
-        <div role="columnheader">Thu</div>
-        <div role="columnheader">Fri</div>
-        <div role="columnheader">Sat</div>
+        <div class="grid grid-cols-7 text-center" style="font-weight:600; color:var(--text-secondary); border-top:1px solid var(--border-subtle); font-size:12px; padding:6px 0;">
+            <div role="columnheader">Sun</div>
+            <div role="columnheader">Mon</div>
+            <div role="columnheader">Tue</div>
+            <div role="columnheader">Wed</div>
+            <div role="columnheader">Thu</div>
+            <div role="columnheader">Fri</div>
+            <div role="columnheader">Sat</div>
         </div>
-        <div id="calendar-days" class="grid grid-cols-7 text-center text-gray-900 dark:text-white" role="rowgroup"></div>
+        <div id="calendar-days" class="grid grid-cols-7 text-center" style="color:var(--text-primary);" role="rowgroup"></div>
     </div>
-    </div>
+</div>
 
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
+<script>
+document.addEventListener("DOMContentLoaded", () => {
     const daysContainer = document.getElementById("calendar-days");
     const monthYear = document.getElementById("monthYear");
     const prevBtn = document.getElementById("prevMonth");
@@ -56,7 +56,7 @@
         const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
         if (isToday) {
-            dayCell.classList.add("bg-blue-600", "text-white", "rounded-full");
+            dayCell.classList.add("calendar-today");
             dayCell.setAttribute("aria-current", "date");
         }
         daysContainer.appendChild(dayCell);

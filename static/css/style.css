@@ -1,20 +1,37 @@
 :root {
-    --bg-color: #ffffff;
-    --text-color: #1f2937;
-    --income-color: #22c55e;
-    --expense-color: #ef4444;
-    --balance-color: #2563eb;
-    --legend-color: #1f2937;
-}
+  --bg-page:        #12151e;
+  --bg-surface:     #181d2a;
+  --bg-card:        #1e2435;
+  --bg-sidebar:     #0e1118;
+  --bg-hover:       #242b3d;
+  --border-subtle:  #252d40;
+  --border-card:    rgba(255,255,255,0.06);
 
-/* Dark mode colors */
-.dark {
-    --bg-color: #1f2937;
-    --text-color: #f3f4f6;
-    --income-color: #22c55e;
-    --expense-color: #ef4444;
-    --balance-color: #3b82f6;
-    --legend-color: #f3f4f6;
+  --text-primary:   #f0ede8;
+  --text-secondary: #8b95a8;
+  --text-muted:     #4a5468;
+
+  --gold:           #d4a843;
+  --gold-dim:       rgba(212,168,67,0.15);
+  --gold-glow:      0 0 24px rgba(212,168,67,0.18);
+
+  --emerald:        #22c55e;
+  --emerald-dim:    rgba(34,197,94,0.12);
+  --sky:            #60a5fa;
+  --red:            #ef4444;
+  --red-dim:        rgba(239,68,68,0.12);
+  --amber:          #f59e0b;
+
+  /* Legacy custom properties — read directly via getComputedStyle() by
+     chart.js and calculator.js. Keep the names, point them at the new
+     palette so those scripts stay themed without any JS changes. */
+  --bg-color:       var(--bg-card);
+  --text-color:     var(--text-primary);
+  --legend-color:   var(--text-secondary);
+  --tooltip-bg:     var(--bg-surface);
+  --income-color:   var(--emerald);
+  --expense-color:  var(--red);
+  --balance-color:  var(--gold);
 }
 
 /* =========================
@@ -22,9 +39,126 @@
    ========================= */
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    transition: background-color 0.3s ease, color 0.3s ease;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, .stat-number {
+  font-family: 'Fraunces', serif;
+}
+
+/* Glass card — the primary card style everywhere */
+.glass-card {
+  background: rgba(30, 36, 53, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+}
+
+/* Section eyebrow labels */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Money figures */
+.money,
+.scenario-money,
+.stat-money {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.money-positive { color: var(--emerald); }
+.money-negative { color: var(--red); }
+.money-neutral  { color: var(--text-secondary); }
+.money-gold     { color: var(--gold); font-family: 'JetBrains Mono', monospace; }
+
+/* Verdict badges */
+.badge-do-it  { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(34,197,94,0.3); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.badge-wait   { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.badge-bad    { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+
+/* Stat number style */
+.stat-number {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--gold);
+  color: #000;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  transition: filter 0.15s ease;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.btn-secondary:hover { background: var(--bg-hover); }
+
+.btn-danger {
+  color: var(--red);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.btn-danger:hover { background: var(--red-dim); }
+
+/* Inputs */
+.field-input {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.field-input::placeholder { color: var(--text-muted); }
+.field-input:focus {
+  outline: 2px solid rgba(212,168,67,0.45);
+  outline-offset: 1px;
+}
+
+/* Tables — no alternating rows, subtle row dividers */
+.plain-table tr {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.plain-table tr:last-child {
+  border-bottom: none;
+}
+
+/* Navigation active state (sidebar) */
+.nav-link {
+  color: var(--text-secondary);
+  border-left: 2px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.nav-active {
+  background: rgba(212,168,67,0.08);
+  border-left: 2px solid var(--gold);
+  color: var(--text-primary);
+}
+.nav-active:hover {
+  background: rgba(212,168,67,0.12);
 }
 
 /* =========================
@@ -32,8 +166,7 @@ body {
    ========================= */
 
 .finance-tab {
-    color: var(--text-color);
-    transition: color 0.3s ease;
+    color: var(--text-primary);
 }
 
 .finance-tab form > * {
@@ -41,35 +174,38 @@ body {
 }
 
 .finance-income {
-    color: var(--income-color) !important;
+    color: var(--emerald) !important;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .finance-expense {
-    color: var(--expense-color) !important;
+    color: var(--red) !important;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .finance-balance {
-    color: var(--balance-color) !important;
+    color: var(--gold) !important;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .finance-tab .tx-amount[data-type="income"] {
-    color: var(--income-color) !important;
+    color: var(--emerald) !important;
 }
 
 .finance-tab .tx-amount[data-type="expense"] {
-    color: var(--expense-color) !important;
+    color: var(--red) !important;
 }
 
 .text-legend {
-    color: var(--legend-color);
+    color: var(--text-secondary);
 }
 
 .finance-tab input,
 .finance-tab select,
 .finance-tab textarea {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    border-color: var(--legend-color);
+    background-color: var(--bg-sidebar);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
 }
 
 .finance-tab input:focus,
@@ -77,7 +213,7 @@ body {
 .finance-tab textarea:focus,
 .finance-tab .tx-desc:focus,
 .finance-tab .tx-amount:focus {
-    outline: 2px solid var(--balance-color);
+    outline: 2px solid rgba(212,168,67,0.45);
     outline-offset: 2px;
 }
 
@@ -89,56 +225,33 @@ body {
     scroll-behavior: smooth;
 }
 
-/* Slightly nicer scrollbar */
-#tx-list::-webkit-scrollbar {
-    width: 8px;
-}
-
-#tx-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
+#tx-list::-webkit-scrollbar { width: 8px; }
+#tx-list::-webkit-scrollbar-track { background: transparent; }
 #tx-list::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.45);
+    background: rgba(139, 149, 168, 0.35);
     border-radius: 9999px;
 }
-
 #tx-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 114, 128, 0.65);
-}
-
-.dark #tx-list::-webkit-scrollbar-thumb {
-    background: rgba(107, 114, 128, 0.55);
-}
-
-.dark #tx-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.7);
+    background: rgba(139, 149, 168, 0.55);
 }
 
 /* AI chat scrollbar */
-#ai-messages::-webkit-scrollbar {
-    width: 8px;
-}
-
-#ai-messages::-webkit-scrollbar-track {
-    background: transparent;
-}
-
+#ai-messages::-webkit-scrollbar { width: 8px; }
+#ai-messages::-webkit-scrollbar-track { background: transparent; }
 #ai-messages::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.45);
+    background: rgba(139, 149, 168, 0.35);
     border-radius: 9999px;
 }
-
 #ai-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 114, 128, 0.65);
+    background: rgba(139, 149, 168, 0.55);
 }
 
-.dark #ai-messages::-webkit-scrollbar-thumb {
-    background: rgba(17, 24, 39, 0.85);
-}
-
-.dark #ai-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.9);
+/* Sidebar nav scrollbar */
+.app-sidebar::-webkit-scrollbar { width: 6px; }
+.app-sidebar::-webkit-scrollbar-track { background: transparent; }
+.app-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(139, 149, 168, 0.25);
+    border-radius: 9999px;
 }
 
 /* Transaction row polish */
@@ -152,15 +265,9 @@ body {
 
 .tx-row:hover {
     transform: translateY(-1px);
-    background-color: rgba(255, 255, 255, 0.96);
-    border-color: rgba(147, 197, 253, 0.65);
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
-}
-
-.dark .tx-row:hover {
-    background-color: rgba(75, 85, 99, 0.78);
-    border-color: rgba(96, 165, 250, 0.45);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-hover);
+    border-color: rgba(212,168,67,0.35);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
 }
 
 .tx-handle {
@@ -179,12 +286,69 @@ body {
 
 .tx-desc:focus,
 .tx-amount:focus {
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.06);
 }
 
-.dark .tx-desc:focus,
-.dark .tx-amount:focus {
-    background-color: rgba(17, 24, 39, 0.35);
+/* =========================
+    Notes masonry
+   ========================= */
+
+.notes-masonry {
+    column-count: 1;
+    column-gap: 16px;
+}
+
+@media (min-width: 640px) {
+    .notes-masonry { column-count: 2; }
+}
+
+@media (min-width: 1024px) {
+    .notes-masonry { column-count: 3; }
+}
+
+.notes-masonry .note-row {
+    break-inside: avoid;
+    margin-bottom: 16px;
+}
+
+/* =========================
+    Calculator
+   ========================= */
+
+.calc-btn {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: background 0.15s ease;
+}
+.calc-btn:hover { background: var(--bg-hover); }
+
+.calc-btn-equals {
+  background: var(--gold);
+  color: #000;
+  font-weight: 600;
+}
+.calc-btn-equals:hover { filter: brightness(1.08); }
+
+.calc-btn-clear {
+  background: var(--red-dim);
+  color: var(--red);
+  border-color: rgba(239,68,68,0.3);
+}
+.calc-btn-clear:hover { background: rgba(239,68,68,0.2); }
+
+/* =========================
+    Calendar
+   ========================= */
+
+.calendar-today {
+  background: var(--gold) !important;
+  color: #000 !important;
+  border-radius: 9999px;
 }
 
 /* =========================
@@ -231,10 +395,6 @@ body {
     cursor: grabbing;
 }
 
-/* Widgets with buttons/inputs in their header (e.g. the AI widget's
-   Insights/Clear buttons) sit inside the drag zone's 60px band. Lift
-   interactive elements above the drag zone so clicks reach them instead
-   of starting a drag. */
 .widget button,
 .widget input,
 .widget select,
@@ -276,45 +436,61 @@ body {
 
 .auth-bg {
     background:
-        radial-gradient(900px 520px at 50% 18%, rgba(59, 130, 246, 0.22), rgba(0, 0, 0, 0)),
-        radial-gradient(900px 520px at 50% 86%, rgba(16, 185, 129, 0.1), rgba(0, 0, 0, 0)),
-        linear-gradient(180deg, #0b1220 0%, #08101d 100%);
+        radial-gradient(900px 520px at 50% 18%, rgba(212, 168, 67, 0.16), rgba(0, 0, 0, 0)),
+        radial-gradient(900px 520px at 50% 86%, rgba(34, 197, 94, 0.08), rgba(0, 0, 0, 0)),
+        linear-gradient(180deg, #0e1118 0%, #0a0c12 100%);
 }
 
 .auth-card {
-    background: rgba(51, 58, 78, 0.72);
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(30, 36, 53, 0.72);
+    border: 1px solid var(--border-card);
     backdrop-filter: blur(10px);
 }
 
 .auth-input {
-    background: rgba(17, 24, 39, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    color: #e5e7eb;
+    background: rgba(14, 17, 24, 0.6);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
 }
 
 .auth-input::placeholder {
-    color: rgba(226, 232, 240, 0.55);
+    color: var(--text-muted);
 }
 
 .auth-input:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.85);
+    outline: 2px solid rgba(212, 168, 67, 0.6);
     outline-offset: 2px;
 }
 
 .auth-button {
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--gold);
+    color: #000;
 }
 
 .auth-button:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.08);
 }
 
 .auth-link {
-    color: #60a5fa;
+    color: var(--gold);
 }
 
 .auth-link:hover {
     text-decoration: underline;
+}
+
+/* =========================
+    App shell responsiveness
+   ========================= */
+
+@media (max-width: 767px) {
+    .app-sidebar {
+        display: none !important;
+    }
+    .app-main {
+        margin-left: 0 !important;
+    }
+    .dashboard-row {
+        grid-template-columns: 1fr !important;
+    }
 }

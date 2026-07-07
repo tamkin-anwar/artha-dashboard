@@ -10,7 +10,7 @@
 
     <!-- PWA -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#d4a843">
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -30,6 +30,11 @@
         })();
     </script>
 
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <!-- Tailwind (CDN for now) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -47,14 +52,209 @@
     <script defer src="{{ url_for('static', filename='vendor/sortable.min.js') }}"></script>
 </head>
 
-<body class="bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300" role="document">
+<body style="background: var(--bg-page); color: var(--text-primary); font-family: 'Inter', sans-serif;" class="transition-colors duration-300" role="document">
     <noscript>
         <div class="bg-red-100 text-red-800 p-4 text-center font-semibold">
             JavaScript is disabled in your browser. This app requires JavaScript to function properly.
         </div>
     </noscript>
 
-    {% block content %}{% endblock %}
+    {% if hide_app_shell %}
+
+        {% block content %}{% endblock %}
+
+    {% else %}
+        {% set current_view = request.args.get('view') %}
+        {% set is_dashboard_active = request.endpoint == 'dashboard.index' and not current_view %}
+        {% set is_finance_active = request.endpoint == 'dashboard.index' and current_view == 'finance' %}
+        {% set is_notes_active = request.endpoint == 'dashboard.index' and current_view == 'notes' %}
+        {% set is_scenarios_active = request.endpoint and 'scenario' in request.endpoint %}
+
+        <div style="display:flex; min-height:100vh;">
+
+            <!-- SIDEBAR -->
+            <aside class="app-sidebar" style="width:220px; min-width:220px; background:var(--bg-sidebar); border-right:1px solid var(--border-subtle); display:flex; flex-direction:column; position:fixed; height:100vh; overflow-y:auto; z-index:50;">
+
+                <!-- Logo -->
+                <div style="padding:24px 20px 16px; border-bottom:1px solid var(--border-subtle);">
+                    <div style="font-family:'Fraunces',serif; font-size:22px; color:var(--text-primary);">Artha</div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Personal OS</div>
+                </div>
+
+                <!-- Nav -->
+                <nav style="flex:1; padding:12px 10px; display:flex; flex-direction:column; gap:2px;" aria-label="Main navigation">
+                    <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'nav-active' if is_dashboard_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">🏠</span> Dashboard
+                    </a>
+                    <a href="{{ url_for('scenarios.index') }}" class="nav-link {{ 'nav-active' if is_scenarios_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">🎯</span> Scenarios
+                    </a>
+                    <a href="{{ url_for('dashboard.index', view='finance') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">💸</span> Finance
+                    </a>
+                    <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">📝</span> Notes
+                    </a>
+                    <a href="{{ url_for('dashboard.index') }}#widget-ai" class="nav-link" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                        <span aria-hidden="true">🤖</span> AI Assistant
+                    </a>
+                </nav>
+
+                <!-- User chip -->
+                <div style="padding:16px; border-top:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
+                    <div style="width:32px; height:32px; border-radius:50%; background:var(--gold-dim); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--gold); font-family:'Fraunces',serif; flex-shrink:0;">
+                        {{ current_user.first_name[0] if current_user.is_authenticated and current_user.first_name else '?' }}
+                    </div>
+                    <div style="min-width:0;">
+                        <div style="font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ current_user.first_name if current_user.is_authenticated else 'Guest' }}</div>
+                        <div style="font-size:11px; color:var(--text-secondary);">Personal OS</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <div class="app-main" style="margin-left:220px; flex:1; min-height:100vh; min-width:0;">
+
+                <!-- TOP BAR -->
+                <div style="padding:16px 32px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; background:var(--bg-page); position:sticky; top:0; z-index:40; gap:16px;">
+                    <button id="menu-btn" type="button" class="md:hidden" aria-expanded="false" aria-controls="mobile-menu" style="background:none; border:none; color:var(--text-primary); font-size:20px; line-height:1;">☰</button>
+
+                    <div style="font-size:13px; color:var(--text-secondary); white-space:nowrap;" id="top-date"></div>
+
+                    <div style="flex:1; max-width:360px; margin:0 32px;" class="hidden sm:block">
+                        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:8px; padding:7px 14px; display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:13px;">
+                            <span aria-hidden="true">🔍</span> Ask Artha or search...
+                            <span style="margin-left:auto; font-size:11px; background:var(--bg-card); padding:2px 6px; border-radius:4px; color:var(--text-secondary);">⌘K</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        {% block topbar_action %}{% endblock %}
+
+                        <div style="position:relative;" class="hidden md:block">
+                            <button
+                                id="settings-btn"
+                                type="button"
+                                style="background:var(--bg-card); border:1px solid var(--border-subtle); color:var(--text-primary); width:36px; height:36px; border-radius:8px; font-size:15px;"
+                                aria-haspopup="menu"
+                                aria-expanded="false"
+                                title="Settings"
+                            >
+                                ⚙️
+                            </button>
+
+                            <div
+                                id="settings-dropdown"
+                                class="hidden glass-card"
+                                style="position:absolute; right:0; margin-top:8px; width:260px; padding:8px; z-index:50;"
+                                role="menu"
+                                aria-label="Settings menu"
+                            >
+                                <div class="eyebrow" style="padding:8px 12px 4px;">Preferences</div>
+
+                                <button
+                                    id="toggle-theme"
+                                    type="button"
+                                    class="nav-link"
+                                    style="width:100%; text-align:left; padding:8px 12px; border-radius:8px; font-size:14px; background:none; border:none;"
+                                    role="menuitem"
+                                >
+                                    Toggle theme
+                                </button>
+
+                                <div class="eyebrow" style="padding:10px 12px 4px;">Currency</div>
+
+                                <select
+                                    id="currency-select"
+                                    class="field-input"
+                                    style="width:100%; font-size:13px;"
+                                    role="menuitem"
+                                    aria-label="Currency"
+                                >
+                                    <option value="USD">$ USD</option>
+                                    <option value="GBP">£ GBP</option>
+                                    <option value="BDT">৳ BDT</option>
+                                    <option value="EUR">€ EUR</option>
+                                    <option value="CAD">$ CAD</option>
+                                    <option value="AUD">$ AUD</option>
+                                </select>
+
+                                <div style="margin:10px 0; height:1px; background:var(--border-subtle);"></div>
+
+                                <a href="{{ url_for('auth.change_password') }}" class="nav-link" style="display:block; padding:8px 12px; border-radius:8px; font-size:14px; text-decoration:none;" role="menuitem">
+                                    Change password
+                                </a>
+
+                                <a href="{{ url_for('auth.logout') }}" style="display:block; padding:8px 12px; border-radius:8px; font-size:14px; text-decoration:none; color:var(--red);" role="menuitem">
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE MENU -->
+                <div id="mobile-menu" class="hidden md:hidden glass-card" style="margin:0 16px; position:sticky; top:64px; z-index:39; padding:12px;" aria-label="Mobile navigation">
+                    <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'nav-active' if is_dashboard_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🏠 Dashboard</a>
+                    <a href="{{ url_for('scenarios.index') }}" class="nav-link {{ 'nav-active' if is_scenarios_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🎯 Scenarios</a>
+                    <a href="{{ url_for('dashboard.index', view='finance') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">💸 Finance</a>
+                    <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">📝 Notes</a>
+                    <a href="{{ url_for('dashboard.index') }}#widget-ai" class="nav-link" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🤖 AI Assistant</a>
+
+                    <div style="margin:10px 0; height:1px; background:var(--border-subtle);"></div>
+
+                    <button
+                        id="mobile-settings-btn"
+                        type="button"
+                        class="btn-secondary"
+                        style="width:100%; text-align:left; padding:9px 12px; font-size:14px;"
+                        aria-expanded="false"
+                        aria-controls="mobile-settings-panel"
+                    >
+                        Settings
+                    </button>
+
+                    <div id="mobile-settings-panel" class="hidden" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                        <button id="toggle-theme-mobile" type="button" class="btn-secondary" style="width:100%; padding:9px 12px; font-size:14px;">
+                            Toggle theme
+                        </button>
+
+                        <select
+                            id="currency-select-mobile"
+                            class="field-input"
+                            style="width:100%;"
+                            aria-label="Currency"
+                        >
+                            <option value="USD">$ USD</option>
+                            <option value="GBP">£ GBP</option>
+                            <option value="BDT">৳ BDT</option>
+                            <option value="EUR">€ EUR</option>
+                            <option value="CAD">$ CAD</option>
+                            <option value="AUD">$ AUD</option>
+                        </select>
+
+                        <a href="{{ url_for('auth.change_password') }}" class="btn-secondary" style="display:block; text-align:center; padding:9px 12px; font-size:14px; text-decoration:none;">
+                            Change password
+                        </a>
+
+                        <a href="{{ url_for('auth.logout') }}" style="display:block; text-align:center; padding:9px 12px; font-size:14px; text-decoration:none; color:var(--red); border:1px solid var(--border-subtle); border-radius:8px;">
+                            Logout
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PAGE CONTENT -->
+                <main style="padding:32px;">
+                    {{ self.content() }}
+                </main>
+            </div>
+        </div>
+
+        <script>
+            const d = new Date();
+            document.getElementById('top-date').textContent = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+        </script>
+    {% endif %}
 
     <!-- SINGLE entrypoint (modules) -->
     <script type="module" src="{{ url_for('static', filename='js/init.js') }}"></script>

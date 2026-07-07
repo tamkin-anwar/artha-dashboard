@@ -1,17 +1,41 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-100 dark:bg-gray-900">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Server Error</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #12151e;
+            color: #f0ede8;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            margin: 0;
+        }
+        main { display: flex; flex-direction: column; gap: 24px; align-items: center; }
+        h1 { font-family: 'Fraunces', serif; color: #ef4444; font-size: 64px; font-weight: 600; margin: 0; }
+        p { color: #8b95a8; font-size: 18px; margin: 0; }
+        a {
+            background: #ef4444;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        a:hover { filter: brightness(1.1); }
+    </style>
 </head>
-<body class="flex items-center justify-center h-screen text-center">
-    <main class="space-y-6">
-        <h1 class="text-6xl font-bold text-red-600 dark:text-red-400">500</h1>
-        <p class="text-xl text-gray-700 dark:text-gray-300">Something went wrong on our end. Please try again later.</p>
-        <a href="{{ url_for('dashboard.index') }}" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-            Go Back Home
-        </a>
+<body>
+    <main>
+        <h1>500</h1>
+        <p>Something went wrong on our end. Please try again later.</p>
+        <a href="{{ url_for('dashboard.index') }}">Go Back Home</a>
     </main>
 </body>
 </html>
