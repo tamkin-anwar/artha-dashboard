@@ -1,0 +1,163 @@
+{% set immediate_cash_impact = -scenario.one_time_cost %}
+{% set monthly_cash_flow = scenario.net_monthly_impact - (scenario.one_time_cost / 12) %}
+
+<div class="space-y-6">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">{{ scenario.category }}</p>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white truncate">{{ scenario.title }}</h2>
+        <p class="text-sm text-gray-400 mt-1">
+            {% if scenario.one_time_cost > 0 %}
+                ${{ "%.2f"|format(scenario.one_time_cost) }} one-time
+            {% elif scenario.monthly_cost > 0 %}
+                ${{ "%.2f"|format(scenario.monthly_cost) }}/mo
+            {% else %}
+                No direct cost
+            {% endif %}
+            &middot;
+            {% if scenario.start_date and scenario.end_date %}
+                {{ scenario.start_date.strftime("%b %Y") }} &ndash; {{ scenario.end_date.strftime("%b %Y") }}
+            {% elif scenario.start_date %}
+                Starting {{ scenario.start_date.strftime("%b %d, %Y") }}
+            {% elif scenario.payback_months is not none and scenario.payback_months > 0 %}
+                ~{{ scenario.payback_months }} month payback
+            {% else %}
+                Ongoing
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="rounded-2xl bg-[#131a26] border border-white/5 p-5">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">AI Verdict</p>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <span
+                class="px-3 py-1 rounded-full text-sm font-bold
+                {% if verdict.label == 'do_it' %}bg-[#22c55e] text-white
+                {% elif verdict.label == 'bad_idea' %}bg-[#ef4444] text-white
+                {% else %}bg-amber-400 text-gray-900{% endif %}"
+            >
+                {% if verdict.label == 'do_it' %}Do it{% elif verdict.label == 'bad_idea' %}Bad idea{% else %}Wait{% endif %}
+            </span>
+            <span
+                class="px-3 py-1 rounded-full text-sm font-semibold capitalize
+                {% if verdict.risk_level == 'low' %}bg-[#22c55e]/15 text-[#22c55e]
+                {% elif verdict.risk_level == 'high' %}bg-[#ef4444]/15 text-[#ef4444]
+                {% else %}bg-amber-400/15 text-amber-400{% endif %}"
+            >
+                {{ verdict.risk_level }} risk
+            </span>
+        </div>
+        <p class="text-sm text-gray-300">{{ verdict.insight }}</p>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4">
+            <p
+                class="scenario-money text-xl font-bold {% if immediate_cash_impact > 0 %}text-[#22c55e]{% elif immediate_cash_impact < 0 %}text-[#ef4444]{% else %}text-gray-400{% endif %}"
+                data-money-value="{{ immediate_cash_impact }}"
+                data-money-signed="true"
+            >{{ "%+.2f"|format(immediate_cash_impact) }}</p>
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mt-1">Immediate Cash Impact</p>
+        </div>
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4">
+            <p
+                class="scenario-money text-xl font-bold {% if monthly_cash_flow > 0 %}text-[#22c55e]{% elif monthly_cash_flow < 0 %}text-[#ef4444]{% else %}text-gray-400{% endif %}"
+                data-money-value="{{ monthly_cash_flow }}"
+                data-money-signed="true"
+            >{{ "%+.2f"|format(monthly_cash_flow) }}</p>
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mt-1">Monthly Cash Flow</p>
+        </div>
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4">
+            <p
+                class="scenario-money text-xl font-bold {% if scenario.net_monthly_impact > 0 %}text-[#22c55e]{% elif scenario.net_monthly_impact < 0 %}text-[#ef4444]{% else %}text-gray-400{% endif %}"
+                data-money-value="{{ scenario.net_monthly_impact }}"
+                data-money-signed="true"
+            >{{ "%+.2f"|format(scenario.net_monthly_impact) }}</p>
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mt-1">Net Monthly Impact</p>
+        </div>
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4">
+            <p
+                class="scenario-money text-xl font-bold {% if scenario.net_yearly_impact > 0 %}text-[#22c55e]{% elif scenario.net_yearly_impact < 0 %}text-[#ef4444]{% else %}text-gray-400{% endif %}"
+                data-money-value="{{ scenario.net_yearly_impact }}"
+                data-money-signed="true"
+            >{{ "%+.2f"|format(scenario.net_yearly_impact) }}</p>
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mt-1">Net Yearly Impact</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4 flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full shrink-0 {% if scenario.net_monthly_impact >= 0 %}bg-[#22c55e]{% else %}bg-[#ef4444]{% endif %}"></span>
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-wide text-gray-500">Savings Goal Impact</p>
+                <p
+                    class="scenario-money text-sm font-semibold {% if scenario.net_monthly_impact >= 0 %}text-[#22c55e]{% else %}text-[#ef4444]{% endif %}"
+                    data-money-value="{{ scenario.net_monthly_impact }}"
+                    data-money-signed="true"
+                    data-money-suffix="/mo"
+                >{{ "%+.2f"|format(scenario.net_monthly_impact) }}/mo</p>
+            </div>
+        </div>
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4 flex items-center gap-3">
+            <span
+                class="w-2 h-2 rounded-full shrink-0
+                {% if verdict.risk_level == 'low' %}bg-[#22c55e]{% elif verdict.risk_level == 'high' %}bg-[#ef4444]{% else %}bg-amber-400{% endif %}"
+            ></span>
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-wide text-gray-500">Risk Level</p>
+                <p class="text-sm font-semibold text-white capitalize">{{ verdict.risk_level }}</p>
+            </div>
+        </div>
+        <div class="rounded-xl bg-[#131a26] border border-white/5 p-4 flex items-center gap-3">
+            <span
+                class="w-2 h-2 rounded-full shrink-0
+                {% if scenario.status == 'active' %}bg-[#22c55e]{% elif scenario.status == 'archived' %}bg-gray-500{% elif scenario.status == 'completed' %}bg-[#2563eb]{% else %}bg-amber-400{% endif %}"
+            ></span>
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-wide text-gray-500">Status</p>
+                <p class="text-sm font-semibold text-white capitalize">{{ scenario.status }}</p>
+            </div>
+        </div>
+    </div>
+
+    {% if scenario.description %}
+        <div>
+            <h3 class="text-sm font-semibold text-white mb-1">Description</h3>
+            <p class="text-sm text-gray-300">{{ scenario.description }}</p>
+        </div>
+    {% endif %}
+
+    {% if scenario.notes %}
+        <div>
+            <h3 class="text-sm font-semibold text-white mb-1">Notes</h3>
+            <p class="text-sm text-gray-300 whitespace-pre-line">{{ scenario.notes }}</p>
+        </div>
+    {% endif %}
+
+    <div class="flex items-center gap-2 pt-2">
+        <a
+            href="{{ url_for('scenarios.edit', scenario_id=scenario.id) }}"
+            class="flex-1 text-center h-11 flex items-center justify-center rounded-lg border border-white/10 text-white text-sm hover:bg-white/5 transition"
+        >
+            Edit
+        </a>
+
+        {% if scenario.status != 'archived' %}
+            <form method="POST" action="{{ url_for('scenarios.archive', scenario_id=scenario.id) }}" class="flex-1 scenario-archive-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="w-full h-11 rounded-lg border border-white/10 text-white text-sm hover:bg-white/5 transition">
+                    Archive
+                </button>
+            </form>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('scenarios.delete', scenario_id=scenario.id) }}" class="scenario-delete-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button
+                type="submit"
+                class="h-11 px-4 rounded-lg text-[#ef4444] hover:bg-[#ef4444]/10 text-sm transition"
+            >
+                Delete
+            </button>
+        </form>
+    </div>
+</div>

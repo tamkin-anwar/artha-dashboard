@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from flask import abort, flash, jsonify, redirect, render_template, request, url_for
@@ -73,6 +73,71 @@ def _current_balance(user_id: int) -> Decimal:
     return income - expense
 
 
+def _monthly_income(user_id: int, months: int = 3) -> Decimal:
+    """Average monthly income over the trailing N months of transaction history."""
+    since = datetime.utcnow() - timedelta(days=30 * months)
+    total = (
+        db.session.query(func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.type == "income",
+            Transaction.timestamp >= since,
+        )
+        .scalar()
+        or Decimal("0")
+    )
+    return Decimal(total) / months
+
+
+def _verdict(scenario: Scenario, monthly_income: Decimal) -> dict:
+    """Rule-based verdict + risk level for the premium scenario UI. No AI call."""
+    high_cost = scenario.one_time_cost > 0 and scenario.one_time_cost > (monthly_income * 3)
+    net_monthly = scenario.net_monthly_impact
+
+    if scenario.financial_risk >= 7 or high_cost:
+        label = "bad_idea"
+    elif scenario.financial_risk <= 3 and net_monthly >= 0:
+        label = "do_it"
+    else:
+        label = "wait"
+
+    if scenario.financial_risk <= 3:
+        risk_level = "low"
+    elif scenario.financial_risk <= 6:
+        risk_level = "medium"
+    else:
+        risk_level = "high"
+
+    if label == "bad_idea":
+        if scenario.financial_risk >= 7 and high_cost:
+            insight = (
+                f"Financial risk is rated {scenario.financial_risk}/10 and the upfront cost is "
+                "more than 3x your average monthly income — this is a hard pass for now."
+            )
+        elif scenario.financial_risk >= 7:
+            insight = (
+                f"Financial risk is rated {scenario.financial_risk}/10 — high enough that "
+                "this shouldn't move forward as-is."
+            )
+        else:
+            insight = (
+                "The upfront cost is more than 3x your average monthly income — that's a "
+                "stretch your cash flow probably can't absorb right now."
+            )
+    elif label == "do_it":
+        insight = "Low financial risk and cash-flow positive — the numbers clearly support doing this."
+    else:
+        if net_monthly < 0:
+            insight = (
+                f"This costs ${abs(net_monthly):,.2f}/month more than it saves — workable, "
+                "but worth waiting for a better moment."
+            )
+        else:
+            insight = "Moderate risk — the numbers are fine but not a clear green light yet."
+
+    return {"label": label, "risk_level": risk_level, "insight": insight}
+
+
 def _get_owned_scenario(scenario_id: int) -> Scenario:
     scenario = db.session.get(Scenario, scenario_id)
     if scenario is None or scenario.user_id != current_user.id:
@@ -135,11 +200,15 @@ def index():
     scenarios = query.order_by(Scenario.created_at.desc()).all()
 
     balance = _current_balance(current_user.id)
+    monthly_income = _monthly_income(current_user.id)
+    verdicts = {s.id: _verdict(s, monthly_income) for s in scenarios}
 
     return render_template(
         "scenarios.html",
         scenarios=scenarios,
         balance=balance,
+        monthly_income=monthly_income,
+        verdicts=verdicts,
         status_filter=status_filter,
         valid_statuses=VALID_STATUSES,
     )
@@ -181,11 +250,24 @@ def add():
 def detail(scenario_id):
     scenario = _get_owned_scenario(scenario_id)
     balance = _current_balance(current_user.id)
+    monthly_income = _monthly_income(current_user.id)
+
+    scenarios = (
+        Scenario.query.filter_by(user_id=current_user.id)
+        .order_by(Scenario.created_at.desc())
+        .all()
+    )
+    verdicts = {s.id: _verdict(s, monthly_income) for s in scenarios}
 
     return render_template(
         "scenario_detail.html",
         scenario=scenario,
+        scenarios=scenarios,
+        verdicts=verdicts,
         balance=balance,
+        monthly_income=monthly_income,
+        status_filter="",
+        valid_statuses=VALID_STATUSES,
         recommendation=scenario.recommendation(balance),
         insight=scenario.insight(balance),
     )
