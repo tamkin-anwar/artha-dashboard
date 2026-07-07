@@ -1,4 +1,13 @@
 <!-- templates/partials/transaction_row.html -->
+<style>
+    /* The date input is only relevant while actively editing this row —
+       keep it out of the way otherwise, and reveal it the moment any
+       field in the row's edit form gets focus (click/tab into desc,
+       amount, the date field itself, etc). Pure CSS so it works without
+       any JS changes. */
+    .tx-edit-form .tx-date { display: none; }
+    .tx-edit-form:focus-within .tx-date { display: inline-block; }
+</style>
 <li class="tx-row flex items-start sm:items-center justify-between gap-3"
     style="padding:10px 12px; background:var(--bg-card); border:1px solid var(--border-subtle); {{ 'border-left:3px solid var(--gold);' if tx.is_recurring else '' }} border-radius:10px;"
     data-id="{{ tx.id }}"
@@ -6,7 +15,7 @@
 
     <form method="POST"
             action="{{ url_for('finance.update_transaction', transaction_id=tx.id) }}"
-            class="flex-grow flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+            class="tx-edit-form flex-grow flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

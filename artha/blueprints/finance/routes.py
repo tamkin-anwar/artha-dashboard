@@ -480,7 +480,7 @@ def finance_page():
     uid = current_user.id
     all_tx = (
         Transaction.query.filter_by(user_id=uid)
-        .order_by(Transaction.timestamp.desc(), Transaction.id.desc())
+        .order_by(Transaction.timestamp.asc(), Transaction.id.asc())
         .all()
     )
 
