@@ -66,7 +66,7 @@
     {% else %}
         {% set current_view = request.args.get('view') %}
         {% set is_dashboard_active = request.endpoint == 'dashboard.index' and not current_view %}
-        {% set is_finance_active = request.endpoint == 'dashboard.index' and current_view == 'finance' %}
+        {% set is_finance_active = request.endpoint == 'finance.finance_page' %}
         {% set is_notes_active = request.endpoint == 'dashboard.index' and current_view == 'notes' %}
         {% set is_calculator_active = request.endpoint == 'dashboard.index' and current_view == 'calculator' %}
         {% set is_calendar_active = request.endpoint == 'dashboard.index' and current_view == 'calendar' %}
@@ -92,7 +92,7 @@
                     <a href="{{ url_for('scenarios.index') }}" class="nav-link {{ 'nav-active' if is_scenarios_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
                         <span aria-hidden="true">🎯</span> Scenarios
                     </a>
-                    <a href="{{ url_for('dashboard.index', view='finance') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                    <a href="{{ url_for('finance.finance_page') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
                         <span aria-hidden="true">💸</span> Finance
                     </a>
                     <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
@@ -206,7 +206,7 @@
                 <div id="mobile-menu" class="hidden md:hidden glass-card" style="margin:0 16px; position:sticky; top:64px; z-index:39; padding:12px;" aria-label="Mobile navigation">
                     <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'nav-active' if is_dashboard_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🏠 Dashboard</a>
                     <a href="{{ url_for('scenarios.index') }}" class="nav-link {{ 'nav-active' if is_scenarios_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🎯 Scenarios</a>
-                    <a href="{{ url_for('dashboard.index', view='finance') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">💸 Finance</a>
+                    <a href="{{ url_for('finance.finance_page') }}" class="nav-link {{ 'nav-active' if is_finance_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">💸 Finance</a>
                     <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">📝 Notes</a>
                     <a href="{{ url_for('ai.page') }}" class="nav-link {{ 'nav-active' if is_ai_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🤖 AI Assistant</a>
                     <a href="{{ url_for('dashboard.index', view='calculator') }}" class="nav-link {{ 'nav-active' if is_calculator_active }}" style="display:block; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">🧮 Calculator</a>
