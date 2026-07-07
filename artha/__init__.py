@@ -88,6 +88,15 @@ def create_app(config_name: str = "default") -> Flask:
         # already; overriding it breaks WTForms template helpers.
         return {"csrf_token_value": generate_csrf()}
 
+    @app.context_processor
+    def inject_version():
+        from artha.version import __version__, __build__, __iterations__
+        return {
+            "version": __version__,
+            "build": __build__,
+            "iterations": __iterations__,
+        }
+
     # ------------------------------------------------------------------
     # Security headers (applied to every response)
     # ------------------------------------------------------------------

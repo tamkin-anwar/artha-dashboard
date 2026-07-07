@@ -119,6 +119,11 @@
                         <div style="font-size:11px; color:var(--text-secondary);">Personal OS</div>
                     </div>
                 </div>
+
+                <!-- Version badge -->
+                <div style="padding:8px 16px 14px; text-align:center; font-size:10px; color:var(--text-muted); letter-spacing:0.02em;">
+                    v{{ version }} &middot; {{ iterations }} build{{ 's' if iterations != 1 else '' }}
+                </div>
             </aside>
 
             <!-- MAIN CONTENT -->
