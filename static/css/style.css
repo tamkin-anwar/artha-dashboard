@@ -1,4 +1,46 @@
+/* Light theme — default (no .dark class on <html>) */
 :root {
+  --bg-page:        #f7f5f0;
+  --bg-surface:     #ffffff;
+  --bg-card:        #ffffff;
+  --bg-sidebar:     #ffffff;
+  --bg-hover:       #eee9de;
+  --border-subtle:  #e4ddd0;
+  --border-card:    rgba(0,0,0,0.08);
+  --glass-bg:       rgba(255,255,255,0.75);
+
+  --text-primary:   #1f2430;
+  --text-secondary: #5b6478;
+  --text-muted:     #9aa1b0;
+
+  --gold:           #b8842a;
+  --gold-dim:       rgba(184,132,42,0.14);
+  --gold-glow:      0 0 24px rgba(184,132,42,0.18);
+
+  --emerald:        #16a34a;
+  --emerald-dim:    rgba(22,163,74,0.12);
+  --sky:            #2563eb;
+  --red:            #dc2626;
+  --red-dim:        rgba(220,38,38,0.12);
+  --amber:          #d97706;
+
+  /* Legacy custom properties — read directly via getComputedStyle() by
+     chart.js and calculator.js. Keep the names, point them at the new
+     palette so those scripts stay themed without any JS changes.
+     --legend-color uses --text-primary (not --text-secondary) so chart
+     legend/tooltip/datalabel text stays high-contrast against both the
+     page background and the colored pie slices in both themes. */
+  --bg-color:       var(--bg-card);
+  --text-color:     var(--text-primary);
+  --legend-color:   var(--text-primary);
+  --tooltip-bg:     var(--bg-surface);
+  --income-color:   var(--emerald);
+  --expense-color:  var(--red);
+  --balance-color:  var(--gold);
+}
+
+/* Dark theme — toggled by theme.js adding .dark to <html> */
+.dark {
   --bg-page:        #12151e;
   --bg-surface:     #181d2a;
   --bg-card:        #1e2435;
@@ -6,6 +48,7 @@
   --bg-hover:       #242b3d;
   --border-subtle:  #252d40;
   --border-card:    rgba(255,255,255,0.06);
+  --glass-bg:       rgba(30,36,53,0.7);
 
   --text-primary:   #f0ede8;
   --text-secondary: #8b95a8;
@@ -21,17 +64,6 @@
   --red:            #ef4444;
   --red-dim:        rgba(239,68,68,0.12);
   --amber:          #f59e0b;
-
-  /* Legacy custom properties — read directly via getComputedStyle() by
-     chart.js and calculator.js. Keep the names, point them at the new
-     palette so those scripts stay themed without any JS changes. */
-  --bg-color:       var(--bg-card);
-  --text-color:     var(--text-primary);
-  --legend-color:   var(--text-secondary);
-  --tooltip-bg:     var(--bg-surface);
-  --income-color:   var(--emerald);
-  --expense-color:  var(--red);
-  --balance-color:  var(--gold);
 }
 
 /* =========================
@@ -50,7 +82,7 @@ h1, h2, h3, .stat-number {
 
 /* Glass card — the primary card style everywhere */
 .glass-card {
-  background: rgba(30, 36, 53, 0.7);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-card);
@@ -286,7 +318,7 @@ h1, h2, h3, .stat-number {
 
 .tx-desc:focus,
 .tx-amount:focus {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: var(--bg-hover);
 }
 
 /* =========================

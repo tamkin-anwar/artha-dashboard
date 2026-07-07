@@ -105,13 +105,20 @@
     }
 }
 
-/* Theme variables — matches the premium dark palette in style.css */
+/* Theme variables — matches the light/dark palettes in style.css.
+   --text-primary is not redeclared here; style.css already themes it. */
 :root {
+    --toast-bg: #ffffff;
+    --toast-text-color: #1f2430;
+    --toast-success-bg: #16a34a;
+    --toast-error-bg: #dc2626;
+}
+
+.dark {
     --toast-bg: #1e2435;
     --toast-text-color: #f0ede8;
     --toast-success-bg: #22c55e;
     --toast-error-bg: #ef4444;
-    --text-primary: #f0ede8;
 }
 
 .chart-text {
