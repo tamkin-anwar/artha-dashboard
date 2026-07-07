@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Finance{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div aria-live="polite" role="status" style="margin-bottom:16px;">
+            {% for category, message in messages %}
+                <p class="flash-message" style="text-align:center; font-size:14px; margin-bottom:8px; color: {% if category == 'success' %}var(--emerald){% elif category == 'error' %}var(--red){% else %}var(--sky){% endif %};">
+                    {{ message|safe }}
+                </p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="eyebrow" style="margin-bottom:8px;">FINANCE</div>
+<h1 style="font-family:'Fraunces',serif; font-size:32px; font-weight:300; color:var(--text-primary); margin:0 0 24px;">Money, in one view</h1>
+
+<!-- Month selector -->
+<div class="glass-card" style="padding:12px 14px; margin-bottom:24px; display:flex; align-items:center; gap:8px;">
+    <button type="button" id="month-scroll-left" aria-label="Scroll months left" style="background:none; border:none; color:var(--text-secondary); font-size:16px; cursor:pointer; flex-shrink:0; padding:4px;">
+        &larr;
+    </button>
+
+    <div id="month-tab-row" class="month-tab-row" style="display:flex; gap:6px; overflow-x:auto; flex:1;">
+        <a
+            href="{{ url_for('finance.finance_page', month='all') }}"
+            class="month-tab-pill {{ 'month-tab-active' if all_time }}"
+        >
+            All time
+        </a>
+        {% for m in month_tabs %}
+            <a
+                href="{{ url_for('finance.finance_page', month=m.value) }}"
+                class="month-tab-pill {{ 'month-tab-active' if (not all_time and m.value == selected_month_value) }}"
+                data-month="{{ m.value }}"
+            >
+                {{ m.label }}{% if m.is_current %} <span style="color:var(--gold);">&#9679;</span>{% endif %}
+                <span style="display:block; font-size:10px; margin-top:2px; color:{{ 'var(--emerald)' if m.net >= 0 else 'var(--red)' }};">
+                    {{ '+' if m.net >= 0 else '-' }}${{ '%.0f'|format(m.net|abs) }}
+                </span>
+            </a>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="month-scroll-right" aria-label="Scroll months right" style="background:none; border:none; color:var(--text-secondary); font-size:16px; cursor:pointer; flex-shrink:0; padding:4px;">
+        &rarr;
+    </button>
+</div>
+
+<!-- Stat cards -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:24px;">
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--emerald); display:inline-block;"></span>
+            <span class="eyebrow">Income</span>
+        </div>
+        <div class="stat-number money-positive" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(income) }}</div>
+        {% if comparison %}
+            <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.income.favorable else 'var(--red)' }};">
+                {{ '↑' if comparison.income.up else '↓' }} ${{ '%.2f'|format(comparison.income.delta) }} {{ 'more' if comparison.income.up else 'less' }} than last month
+            </p>
+        {% endif %}
+    </div>
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--red); display:inline-block;"></span>
+            <span class="eyebrow">Expenses</span>
+        </div>
+        <div class="stat-number money-negative" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(expense) }}</div>
+        {% if comparison %}
+            <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.expense.favorable else 'var(--red)' }};">
+                {{ '↑' if comparison.expense.up else '↓' }} ${{ '%.2f'|format(comparison.expense.delta) }} {{ 'more' if comparison.expense.up else 'less' }} than last month
+            </p>
+        {% endif %}
+    </div>
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--gold); display:inline-block;"></span>
+            <span class="eyebrow">Net</span>
+        </div>
+        <div class="stat-number money-gold" style="font-size:24px;">${{ "%.2f"|format(balance) }}</div>
+        {% if comparison %}
+            <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.net.favorable else 'var(--red)' }};">
+                {{ '↑' if comparison.net.up else '↓' }} ${{ '%.2f'|format(comparison.net.delta) }} {{ 'more' if comparison.net.up else 'less' }} than last month
+            </p>
+        {% endif %}
+    </div>
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--sky); display:inline-block;"></span>
+            <span class="eyebrow">Transactions</span>
+        </div>
+        <div class="stat-number" style="font-family:'JetBrains Mono',monospace; font-size:24px;">{{ transactions|length }}</div>
+    </div>
+</div>
+
+<!-- Month summary card -->
+<div class="glass-card" style="padding:20px; margin-bottom:24px;">
+    <div class="eyebrow" style="margin-bottom:16px;">{{ selected_month_label|upper }}</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:20px;">
+        <div>
+            <p class="eyebrow" style="margin-bottom:6px;">Savings Rate</p>
+            <p style="font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin:0; color:{% if savings_rate > 20 %}var(--gold){% elif savings_rate < 0 %}var(--red){% else %}var(--text-primary){% endif %};">
+                {{ '%.1f'|format(savings_rate) }}%
+            </p>
+        </div>
+        <div>
+            <p class="eyebrow" style="margin-bottom:6px;">Biggest Expense Category</p>
+            <p style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_category or '—' }}</p>
+        </div>
+        <div>
+            <p class="eyebrow" style="margin-bottom:6px;">Highest Spending Day</p>
+            <p style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_day_label or '—' }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- 6-month trend -->
+<div class="glass-card" style="padding:20px; margin-bottom:24px;">
+    <div class="eyebrow" style="margin-bottom:14px;">6-Month Trend</div>
+    <div style="position:relative; height:220px;">
+        <canvas id="monthlyTrendChart"></canvas>
+    </div>
+</div>
+
+<!-- Transactions -->
+<div class="finance-tab glass-card" style="padding:24px;">
+    <form
+        method="POST"
+        action="{{ url_for('finance.add_transaction') }}"
+        class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center"
+        style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-subtle);"
+        autocomplete="off"
+    >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <input
+            type="text"
+            name="description"
+            placeholder="Description"
+            required
+            class="field-input w-full min-w-0 sm:col-span-4 h-11 text-sm"
+        >
+
+        <div class="relative w-full min-w-0 sm:col-span-3">
+            <span
+                class="absolute inset-y-0 left-0 pl-4 flex items-center h-11 text-sm"
+                style="color:var(--text-muted);"
+                data-currency-symbol
+            >$</span>
+
+            <input
+                type="number"
+                name="amount"
+                placeholder="Amount"
+                step="0.01"
+                inputmode="decimal"
+                required
+                class="field-input w-full min-w-0 h-11 text-sm"
+                style="padding-left:2.25rem;"
+            >
+        </div>
+
+        <select
+            name="type"
+            required
+            class="field-input w-full min-w-0 sm:col-span-3 h-11 text-sm"
+        >
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+        </select>
+
+        <button
+            type="submit"
+            class="btn-primary w-full sm:col-span-2 h-11 px-5 text-sm flex items-center justify-center whitespace-nowrap"
+        >
+            Add
+        </button>
+    </form>
+
+    {% if not all_time %}
+        <p style="font-size:12px; color:var(--text-muted); margin:-8px 0 16px;">
+            New transactions are always dated today, so they may not appear here if you're viewing a past month.
+        </p>
+    {% endif %}
+
+    <ul id="tx-list" class="space-y-3">
+        {% for tx in transactions %}
+            {% include "partials/transaction_row.html" %}
+        {% else %}
+            <li style="text-align:center; padding:24px 0; font-size:14px; color:var(--text-secondary);">
+                No transactions {% if not all_time %}in {{ selected_month_label }}{% else %}yet{% endif %}.
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script type="module">
+import { onThemeChange } from "{{ url_for('static', filename='js/theme.js') }}";
+
+function getVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+}
+
+function renderTrendChart() {
+    var canvas = document.getElementById("monthlyTrendChart");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    var labels = {{ trend_data|map(attribute='label')|list|tojson }};
+    var values = {{ trend_data|map(attribute='net')|list|tojson }};
+    var monthValues = {{ trend_data|map(attribute='value')|list|tojson }};
+
+    var emerald = getVar("--emerald", "#22c55e");
+    var red = getVar("--red", "#ef4444");
+    var gold = getVar("--gold", "#d4a843");
+    var gridColor = getVar("--border-subtle", "rgba(255,255,255,0.08)");
+    var textColor = getVar("--text-secondary", "#8b95a8");
+    var barColors = values.map(function (v) { return v >= 0 ? emerald : red; });
+
+    if (window.__monthlyTrendChart) {
+        window.__monthlyTrendChart.destroy();
+    }
+
+    window.__monthlyTrendChart = new Chart(canvas, {
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    type: "bar",
+                    label: "Net",
+                    data: values,
+                    backgroundColor: barColors,
+                    borderRadius: 4,
+                    order: 2,
+                },
+                {
+                    type: "line",
+                    label: "Trend",
+                    data: values,
+                    borderColor: gold,
+                    backgroundColor: "transparent",
+                    tension: 0.35,
+                    pointBackgroundColor: gold,
+                    pointRadius: 3,
+                    order: 1,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            var v = ctx.parsed.y;
+                            return (v >= 0 ? "+$" : "-$") + Math.abs(v).toFixed(2);
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: textColor } },
+                y: { grid: { color: gridColor }, ticks: { color: textColor } },
+            },
+            onClick: function (evt, elements) {
+                if (!elements.length) return;
+                var idx = elements[0].index;
+                var monthValue = monthValues[idx];
+                if (monthValue) window.location.href = "/finance?month=" + monthValue;
+            },
+        },
+    });
+}
+
+renderTrendChart();
+onThemeChange(renderTrendChart);
+
+var scrollRow = document.getElementById("month-tab-row");
+var leftBtn = document.getElementById("month-scroll-left");
+var rightBtn = document.getElementById("month-scroll-right");
+if (scrollRow && leftBtn && rightBtn) {
+    leftBtn.addEventListener("click", function () {
+        scrollRow.scrollBy({ left: -220, behavior: "smooth" });
+    });
+    rightBtn.addEventListener("click", function () {
+        scrollRow.scrollBy({ left: 220, behavior: "smooth" });
+    });
+    // Land on the selected tab, not the start of the row.
+    var activeTab = scrollRow.querySelector(".month-tab-active");
+    if (activeTab) {
+        activeTab.scrollIntoView({ inline: "center", block: "nearest" });
+    }
+}
+</script>
+{% endblock %}

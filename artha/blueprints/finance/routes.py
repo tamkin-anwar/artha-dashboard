@@ -1,6 +1,8 @@
+import calendar
 import time
 import logging
-from datetime import datetime, timezone
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
 from flask import render_template, redirect, url_for, request, flash, session, jsonify
@@ -303,3 +305,177 @@ def finance_totals():
         "expense": float(expense),
         "balance": float(balance),
     })
+
+
+# ---------------------------------------------------------------------------
+# Monthly Tabs — full finance page with month-by-month filtering
+# ---------------------------------------------------------------------------
+
+def _month_start(year: int, month: int) -> date:
+    return date(year, month, 1)
+
+
+def _prev_month_start(d: date) -> date:
+    last_day_of_prev = _month_start(d.year, d.month) - timedelta(days=1)
+    return _month_start(last_day_of_prev.year, last_day_of_prev.month)
+
+
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+@finance_bp.route("/finance")
+@login_required
+def finance_page():
+    """
+    Full finance page with month-by-month filtering.
+
+    Query param:
+        ?month=YYYY-MM  — show that month only
+        ?month=all      — show all-time (unfiltered), like the old view
+        (none)          — defaults to the current month
+    """
+    uid = current_user.id
+    all_tx = (
+        Transaction.query.filter_by(user_id=uid)
+        .order_by(Transaction.position.asc(), Transaction.id.asc())
+        .all()
+    )
+
+    today = date.today()
+    month_param = (request.args.get("month") or "").strip()
+    all_time = month_param == "all"
+
+    if not all_time and month_param:
+        try:
+            sel_year, sel_month = (int(part) for part in month_param.split("-", 1))
+            selected_date = _month_start(sel_year, sel_month)
+        except (ValueError, TypeError):
+            selected_date = _month_start(today.year, today.month)
+    else:
+        selected_date = _month_start(today.year, today.month)
+
+    # Bucket every transaction by "YYYY-MM" once, rather than re-scanning
+    # the full list for every month we need totals for.
+    buckets = defaultdict(lambda: {"income": Decimal("0"), "expense": Decimal("0"), "txs": []})
+    for tx in all_tx:
+        if not tx.timestamp:
+            continue
+        key = tx.timestamp.strftime("%Y-%m")
+        bucket = buckets[key]
+        bucket["txs"].append(tx)
+        if tx.type == "income":
+            bucket["income"] += tx.amount
+        elif tx.type == "expense":
+            bucket["expense"] += tx.amount
+
+    def bucket_for(d: date) -> dict:
+        return buckets.get(d.strftime("%Y-%m"), {"income": Decimal("0"), "expense": Decimal("0"), "txs": []})
+
+    # Last 12 months (oldest -> newest, ending at the current month) for the tab row.
+    last_12 = []
+    cursor_year, cursor_month = today.year, today.month
+    for _ in range(12):
+        last_12.append(_month_start(cursor_year, cursor_month))
+        cursor_month -= 1
+        if cursor_month == 0:
+            cursor_month = 12
+            cursor_year -= 1
+    last_12.reverse()
+
+    month_tabs = []
+    for d in last_12:
+        b = bucket_for(d)
+        month_tabs.append({
+            "value": d.strftime("%Y-%m"),
+            "label": f"{calendar.month_abbr[d.month]} {d.year}",
+            "net": float(b["income"] - b["expense"]),
+            "is_current": (d.year == today.year and d.month == today.month),
+        })
+
+    if all_time:
+        transactions = all_tx
+        income = sum((t.amount for t in all_tx if t.type == "income"), Decimal("0"))
+        expense = sum((t.amount for t in all_tx if t.type == "expense"), Decimal("0"))
+        selected_month_value = "all"
+        selected_month_label = "All time"
+    else:
+        b = bucket_for(selected_date)
+        transactions = b["txs"]
+        income = b["income"]
+        expense = b["expense"]
+        selected_month_value = selected_date.strftime("%Y-%m")
+        selected_month_label = f"{calendar.month_name[selected_date.month]} {selected_date.year}"
+
+    balance = income - expense
+
+    # Comparison vs. the previous month — meaningless for "all time".
+    comparison = None
+    if not all_time:
+        prev_bucket = bucket_for(_prev_month_start(selected_date))
+        prev_income = prev_bucket["income"]
+        prev_expense = prev_bucket["expense"]
+        prev_balance = prev_income - prev_expense
+
+        def _cmp(curr: Decimal, prev: Decimal, higher_is_better: bool) -> dict:
+            delta = curr - prev
+            up = delta >= 0
+            favorable = up if higher_is_better else not up
+            return {"delta": float(abs(delta)), "up": up, "favorable": favorable}
+
+        comparison = {
+            "income": _cmp(income, prev_income, True),
+            "expense": _cmp(expense, prev_expense, False),
+            "net": _cmp(balance, prev_balance, True),
+        }
+
+    savings_rate = float((balance / income) * 100) if income > 0 else 0.0
+
+    # Biggest expense "category" (first word of the description, per spec)
+    # and the single day of the month with the most spending.
+    expense_txs = [t for t in transactions if t.type == "expense"] if not all_time else [
+        t for t in all_tx if t.type == "expense"
+    ]
+
+    category_totals: dict[str, Decimal] = defaultdict(Decimal)
+    day_totals: dict[int, Decimal] = defaultdict(Decimal)
+    for t in expense_txs:
+        first_word = (t.description or "").strip().split(" ")[0] if (t.description or "").strip() else "Other"
+        category_totals[first_word.capitalize()] += t.amount
+        if t.timestamp:
+            day_totals[t.timestamp.day] += t.amount
+
+    biggest_category = max(category_totals.items(), key=lambda kv: kv[1])[0] if category_totals else None
+    biggest_day = max(day_totals.items(), key=lambda kv: kv[1])[0] if day_totals else None
+    biggest_day_label = f"The {_ordinal(biggest_day)}" if biggest_day else None
+
+    # 6-month trend for the bar chart (oldest -> newest).
+    trend_data = []
+    for d in last_12[-6:]:
+        b = bucket_for(d)
+        trend_data.append({
+            "value": d.strftime("%Y-%m"),
+            "label": f"{calendar.month_abbr[d.month]} {d.year}",
+            "net": float(b["income"] - b["expense"]),
+        })
+
+    return render_template(
+        "finance.html",
+        transactions=transactions,
+        income=float(income),
+        expense=float(expense),
+        balance=float(balance),
+        month_tabs=month_tabs,
+        selected_month_value=selected_month_value,
+        selected_month_label=selected_month_label,
+        all_time=all_time,
+        comparison=comparison,
+        savings_rate=savings_rate,
+        biggest_category=biggest_category,
+        biggest_day_label=biggest_day_label,
+        trend_data=trend_data,
+    )

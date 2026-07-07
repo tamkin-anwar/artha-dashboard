@@ -192,6 +192,36 @@ h1, h2, h3, .stat-number {
   border-color: var(--gold);
 }
 
+/* Finance page — month tab row */
+.month-tab-pill {
+  display: block;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.month-tab-pill:hover {
+  background: var(--bg-hover);
+}
+.month-tab-pill.month-tab-active {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.month-tab-row {
+  scrollbar-width: none;
+}
+.month-tab-row::-webkit-scrollbar {
+  display: none;
+}
+
 /* Tables — no alternating rows, subtle row dividers */
 .plain-table tr {
   border-bottom: 1px solid var(--border-subtle);
