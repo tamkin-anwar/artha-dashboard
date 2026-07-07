@@ -30,13 +30,14 @@
 
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    <div class="mb-4" aria-live="polite" role="status">
-                        {% for category, message in messages %}
-                            <p class="text-sm text-center mb-2" style="color: {% if category == 'success' %}var(--emerald){% elif category == 'error' %}var(--red){% else %}var(--sky){% endif %};">
-                                {{ message|safe }}
-                            </p>
-                        {% endfor %}
-                    </div>
+                    <script type="module">
+                        import { showToast } from "{{ url_for('static', filename='js/toast.js') }}";
+                        document.addEventListener('DOMContentLoaded', function () {
+                            {% for category, message in messages %}
+                                showToast({{ message|tojson }}, {{ category|tojson }});
+                            {% endfor %}
+                        });
+                    </script>
                 {% endif %}
             {% endwith %}
 
