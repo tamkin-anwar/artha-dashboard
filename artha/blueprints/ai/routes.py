@@ -27,7 +27,7 @@ Error shape:
 import json
 import logging
 
-from flask import Response, jsonify, request, stream_with_context
+from flask import Response, jsonify, render_template, request, stream_with_context
 from flask_login import current_user, login_required
 
 from ...services.ai_service import AIService
@@ -198,3 +198,24 @@ def stream_chat():
             "Connection":       "keep-alive",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Full-page route — lives outside the /api/ai prefix
+# ---------------------------------------------------------------------------
+#
+# This blueprint is mounted with url_prefix="/api/ai" (see ./__init__.py),
+# which is right for the JSON endpoints above but wrong for a page a user
+# navigates to directly. `record_once` lets us register a plain "/ai" rule
+# straight on the app object at blueprint-registration time, bypassing the
+# blueprint's own prefix, without touching any other file.
+
+@login_required
+def page():
+    """Full-page AI Assistant experience at /ai."""
+    return render_template("ai.html")
+
+
+@ai_bp.record_once
+def _register_page_route(state):
+    state.app.add_url_rule("/ai", endpoint="ai.page", view_func=page, methods=["GET"])

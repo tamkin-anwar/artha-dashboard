@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant{% endblock %}
+{% block content %}
+
+<div class="eyebrow" style="margin-bottom:6px;">AI ASSISTANT</div>
+<h1 style="font-family:'Fraunces',serif; font-size:32px; font-weight:300; color:var(--text-primary); margin:0;">Artha AI</h1>
+<p style="color:var(--text-secondary); font-size:14px; margin-top:4px; margin-bottom:24px;">Ask anything about your finances. Grounded in your real data.</p>
+
+<div
+    class="glass-card"
+    style="display:flex; flex-direction:column; padding:24px;"
+    id="artha-ai-widget"
+    data-csrf="{{ csrf_token() }}"
+>
+    <div style="display:flex; align-items:center; justify-content:flex-end; margin-bottom:16px;">
+        <button
+            id="ai-clear-btn"
+            type="button"
+            class="btn-secondary"
+            style="padding:6px 14px; font-size:13px;"
+            title="Clear conversation"
+        >
+            Clear
+        </button>
+    </div>
+
+    <!-- Message thread -->
+    <div
+        id="ai-messages"
+        class="overflow-y-auto space-y-3"
+        style="min-height:500px; border-radius:12px; background:var(--bg-sidebar); padding:20px; margin-bottom:16px;"
+        aria-live="polite"
+        aria-label="AI conversation"
+    >
+        <div id="ai-empty-state" class="flex flex-col items-center justify-center h-full text-center">
+            <p class="text-gray-500 dark:text-gray-300 text-sm">Ask me anything about your finances.</p>
+            <p class="text-gray-400 dark:text-gray-400 text-xs mt-1">Or hit <span class="font-medium">✦ Insights</span> for an instant report.</p>
+        </div>
+    </div>
+
+    <!-- Input bar -->
+    <div class="flex items-center space-x-2">
+        <input
+            id="ai-input"
+            type="text"
+            placeholder="Ask Artha AI..."
+            maxlength="4000"
+            autocomplete="off"
+            class="field-input w-full min-w-0 h-11 text-sm"
+            aria-label="Message to Artha AI"
+        />
+        <button
+            id="ai-insights-btn"
+            type="button"
+            class="btn-secondary h-11 px-4 text-sm whitespace-nowrap"
+        >
+            ✦ Insights
+        </button>
+        <button
+            id="ai-send-btn"
+            type="button"
+            class="btn-primary h-11 px-5 text-sm whitespace-nowrap"
+            aria-label="Send message"
+        >
+            Send
+        </button>
+    </div>
+
+    <p style="margin-top:12px; font-size:13px; color:var(--text-secondary);">
+        Powered by Claude — grounded in your real transaction data.
+    </p>
+</div>
+{% endblock %}
