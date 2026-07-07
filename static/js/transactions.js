@@ -343,9 +343,25 @@ function attachRowListeners(row) {
     const amount = row.querySelector(".tx-amount");
     const typeSelect = row.querySelector(".tx-type");
     const dateInput = row.querySelector(".tx-date");
+    const editForm = row.querySelector("form:not(.tx-delete-form)");
 
     attachDeleteListener(row);
     attachRecurringToggleListener(row);
+
+    // Belt-and-braces: the row has a hidden submit button, and a native
+    // <input type="date"> (unlike the contenteditable desc/amount spans)
+    // submits its form on Enter. Without this, that submit bypasses fetch
+    // entirely and the browser navigates to the raw JSON response. This
+    // catches *any* trigger of a native submit on this form, not just the
+    // date field, and always routes it through the same fetch-based save.
+    if (editForm && editForm.dataset.submitBound !== "1") {
+        editForm.dataset.submitBound = "1";
+        editForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            clearTimeout(saveTimeout);
+            saveTransaction(e);
+        });
+    }
 
     if (desc) {
         desc.addEventListener("keydown", (e) => {
