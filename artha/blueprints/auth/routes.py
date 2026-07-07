@@ -63,9 +63,11 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
+        remember = request.form.get("remember") == "on"
+
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
-            login_user(user)
+            login_user(user, remember=remember)
             return redirect(url_for("dashboard.index"))
 
         flash("Invalid credentials", "error")

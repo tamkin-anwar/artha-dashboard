@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 # Absolute path to the repo root (one level up from this file)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
     WTF_CSRF_HEADERS = ["X-CSRFToken", "X-CSRF-Token"]
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
 
 
 class DevelopmentConfig(Config):
