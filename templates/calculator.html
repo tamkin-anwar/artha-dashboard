@@ -20,7 +20,7 @@
 <style>
     .calc-page-layout {
         display: grid;
-        grid-template-columns: 55% 45%;
+        grid-template-columns: 65% 35%;
         gap: 24px;
         align-items: start;
     }
@@ -71,6 +71,7 @@
     #expr-textarea {
         width: 100%;
         display: block;
+        min-height: 500px;
         background: transparent;
         border: none;
         outline: none;
@@ -85,8 +86,9 @@
         overflow-x: auto;
     }
     #expr-results {
-        width: 140px;
+        width: 150px;
         flex-shrink: 0;
+        min-height: 500px;
         border-left: 1px solid var(--border-subtle);
     }
     .expr-result-line {
@@ -101,9 +103,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .expr-comment-marker { color: var(--text-muted); }
 
-    /* Example chips */
+    /* Suggestion chips */
     .calc-chip {
         background: var(--bg-card);
         border: 1px solid var(--border-subtle);
@@ -119,21 +120,30 @@
 
     /* Button calculator */
     .calc-btn {
-        height: 64px;
+        height: 68px;
         border: none;
-        border-radius: 12px;
+        border-radius: 16px;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 18px;
+        font-size: 20px;
         cursor: pointer;
-        transition: all 0.1s ease;
+        transition: transform 0.08s ease;
     }
     .calc-btn:hover { filter: brightness(1.15); }
-    .calc-btn:active { transform: scale(0.96); }
+    .calc-btn:active { transform: scale(0.93); }
     .calc-btn-number { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-subtle); }
-    .calc-btn-operator { background: var(--gold-dim); color: var(--gold); }
-    .calc-btn-equals { background: var(--gold); color: #000; font-weight: 700; }
-    .calc-btn-clear { background: var(--red-dim); color: var(--red); }
+    .calc-btn-operator { background: rgba(212,168,67,0.15); color: var(--gold); border: 1px solid rgba(212,168,67,0.25); }
+    .calc-btn-equals { background: var(--gold); color: #000; font-weight: 700; font-size: 24px; }
+    .calc-btn-clear { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
     .calc-btn-func { background: var(--bg-hover); color: var(--text-secondary); }
+
+    #calc-panel { position: relative; }
+    #calc-keyboard-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
 </style>
 
 <div class="eyebrow" style="margin-bottom:8px;">CALCULATOR</div>
@@ -145,9 +155,17 @@
         <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;">
             <div>
                 <span class="eyebrow" style="display:block; margin-bottom:4px;">Smart Calculator</span>
-                <p style="font-size:12px; color:var(--text-secondary); margin:0;">Type expressions, assign variables, calculate naturally</p>
+                <p style="font-size:12px; color:var(--text-secondary); margin:0;">Type naturally. Assign variables. Calculate anything.</p>
             </div>
             <button type="button" id="expr-clear-btn" class="btn-secondary" style="padding:7px 14px; font-size:12px; flex-shrink:0;">Clear all</button>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+            <button type="button" class="calc-chip" data-insert="salary = 3600">salary = 3600</button>
+            <button type="button" class="calc-chip" data-insert="20% of total">20% of total</button>
+            <button type="button" class="calc-chip" data-insert="tip = 18% on amount">tip = 18% on amount</button>
+            <button type="button" class="calc-chip" data-insert="monthly &times; 12">monthly &times; 12</button>
+            <button type="button" class="calc-chip" data-insert="10% off price">10% off price</button>
         </div>
 
         <div class="expr-wrap">
@@ -156,7 +174,7 @@
             <div class="expr-row">
                 <div class="expr-input-col">
                     <textarea id="expr-textarea" rows="1" spellcheck="false" autocomplete="off"
-                        placeholder="salary = 3600&#10;expenses = 338&#10;savings = salary - expenses"></textarea>
+                        placeholder="salary = 3600&#10;rent = 1597&#10;savings = salary - rent&#10;20% of savings"></textarea>
                 </div>
                 <div id="expr-results"></div>
             </div>
@@ -164,12 +182,14 @@
     </div>
 
     <!-- RIGHT: Button calculator -->
-    <div class="glass-card" style="padding:20px;">
+    <div class="glass-card" id="calc-panel" style="padding:20px;">
         <span class="eyebrow" style="display:block; margin-bottom:16px;">Quick Calc</span>
+
+        <input type="text" id="calc-keyboard-input" aria-hidden="true" tabindex="-1">
 
         <div style="text-align:right; margin-bottom:16px; padding:0 4px;">
             <div id="calc-expr-line" style="font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text-secondary); min-height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">&nbsp;</div>
-            <div id="calc-result-display" style="font-family:'Fraunces',serif; font-size:40px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">0</div>
+            <div id="calc-result-display" style="font-family:'Fraunces',serif; font-size:42px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">0</div>
         </div>
 
         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; border-radius:16px; overflow:hidden;">
@@ -200,14 +220,6 @@
     </div>
 </div>
 
-<!-- Example chips -->
-<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:20px;">
-    <button type="button" class="calc-chip" data-insert="salary = 3600">salary = 3600</button>
-    <button type="button" class="calc-chip" data-insert="20% of total">20% of total</button>
-    <button type="button" class="calc-chip" data-insert="monthly &times; 12">monthly &times; 12</button>
-    <button type="button" class="calc-chip" data-insert="tip = 18% of amount">tip = 18% of amount</button>
-</div>
-
 <script>
 (function () {
     var textarea = document.getElementById("expr-textarea");
@@ -215,12 +227,35 @@
     var cursorLine = document.getElementById("expr-cursor-line");
     var clearBtn = document.getElementById("expr-clear-btn");
 
-    function preprocess(line) {
-        // "18% of 240" -> "(18/100)*240"; "×" -> "*" so chip inserts and
-        // natural typing both evaluate the same way.
-        return line
-            .replace(/(\d+(?:\.\d+)?)\s*%\s+of\s+/gi, "($1/100)*")
-            .replace(/×/g, "*");
+    // -----------------------------------------------------------------
+    // Natural-language preprocessing — order matters.
+    // -----------------------------------------------------------------
+    function preprocess(rawLine) {
+        var line = rawLine;
+
+        // Step 1 — word operators
+        line = line.replace(/\badd\b/gi, "+");
+        line = line.replace(/\bplus\b/gi, "+");
+        line = line.replace(/\bminus\b/gi, "-");
+        line = line.replace(/\bsubtract\b/gi, "-");
+        line = line.replace(/\btimes\b/gi, "*");
+        line = line.replace(/\bmultiplied by\b/gi, "*");
+        line = line.replace(/\bdivided by\b/gi, "/");
+        line = line.replace(/\bover\b/gi, "/");
+        line = line.replace(/×/g, "*");
+
+        // Step 2 — percentage patterns (order matters: of / off / on)
+        line = line.replace(/(\d+(?:\.\d+)?)\s*%\s+of\s+/gi, "($1/100)*");
+        line = line.replace(/(\d+(?:\.\d+)?)\s*%\s+off\s+/gi, "(1-$1/100)*");
+        line = line.replace(/(\d+(?:\.\d+)?)\s*%\s+on\s+/gi, "(1+$1/100)*");
+
+        // Step 3 — variable assignment is handled natively by
+        // math.evaluate(line, scope) below, no separate transform needed.
+
+        // Step 4 — strip $ signs
+        line = line.replace(/\$/g, "");
+
+        return line;
     }
 
     function formatCurrency(n) {
@@ -252,6 +287,7 @@
             }
 
             try {
+                // Step 5 — evaluate the preprocessed line
                 var result = math.evaluate(preprocess(line), scope);
                 if (typeof result === "number" && Number.isFinite(result)) {
                     html += '<div class="expr-result-line">' + formatCurrency(result) + '</div>';
@@ -264,12 +300,6 @@
         });
 
         resultsCol.innerHTML = html;
-
-        // Comment/label lines get their own text treatment directly in the
-        // textarea via a transparent overlay isn't feasible with a plain
-        // textarea, so just leave the raw text as typed — styling is
-        // limited to the result column for a plain <textarea>.
-
         autoGrow();
         updateCursorLine();
     }
@@ -277,7 +307,7 @@
     function autoGrow() {
         textarea.style.height = "auto";
         var lineCount = Math.max(1, textarea.value.split("\n").length);
-        textarea.style.height = (lineCount * 36) + "px";
+        textarea.style.height = Math.max(500, lineCount * 36) + "px";
     }
 
     function updateCursorLine() {
@@ -314,11 +344,14 @@
 
     evaluateAll();
 
-    // ---------------------------------------------------------------
-    // Button calculator
-    // ---------------------------------------------------------------
+    // -----------------------------------------------------------------
+    // Button calculator — mouse AND keyboard share the same press
+    // functions, so both input paths stay in sync.
+    // -----------------------------------------------------------------
     var calcExprLine = document.getElementById("calc-expr-line");
     var calcResultDisplay = document.getElementById("calc-result-display");
+    var calcPanel = document.getElementById("calc-panel");
+    var kbInput = document.getElementById("calc-keyboard-input");
     var currentExpr = "";
 
     var OP_SYMBOLS = { "/": "÷", "*": "×", "-": "−", "+": "+" };
@@ -326,7 +359,7 @@
     function refreshCalcDisplay() {
         calcExprLine.textContent = currentExpr
             ? currentExpr.replace(/[/*\-+]/g, function (m) { return " " + OP_SYMBOLS[m] + " "; })
-            : " ";
+            : " ";
 
         if (!currentExpr) {
             calcResultDisplay.textContent = "0";
@@ -351,78 +384,120 @@
         evaluateAll();
     }
 
-    document.querySelectorAll(".calc-btn[data-digit]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            currentExpr += btn.dataset.digit;
-            refreshCalcDisplay();
-        });
+    function pressDigit(d) {
+        currentExpr += d;
+        refreshCalcDisplay();
+    }
+
+    function pressOperator(op) {
+        if (!currentExpr) return; // don't start an expression with an operator
+        currentExpr += op;
+        refreshCalcDisplay();
+    }
+
+    function pressDecimal() {
+        var trailing = currentExpr.match(/(\d*\.?\d*)$/)[0];
+        if (trailing.indexOf(".") === -1) currentExpr += ".";
+        refreshCalcDisplay();
+    }
+
+    function pressBackspace() {
+        currentExpr = currentExpr.slice(0, -1);
+        refreshCalcDisplay();
+    }
+
+    function pressClear() {
+        currentExpr = "";
+        refreshCalcDisplay();
+    }
+
+    function pressNegate() {
+        var match = currentExpr.match(/(\d+\.?\d*)$/);
+        if (match) {
+            var numStr = match[0];
+            var start = currentExpr.length - numStr.length;
+            var negated = (start > 0 && currentExpr[start - 1] === "-")
+                ? numStr
+                : "-" + numStr;
+            var prefixEnd = (start > 0 && currentExpr[start - 1] === "-") ? start - 1 : start;
+            currentExpr = currentExpr.slice(0, prefixEnd) + negated;
+        }
+        refreshCalcDisplay();
+    }
+
+    function pressPercent() {
+        var m = currentExpr.match(/(\d+\.?\d*)$/);
+        if (m) {
+            var num = parseFloat(m[0]) / 100;
+            currentExpr = currentExpr.slice(0, currentExpr.length - m[0].length) + num;
+        }
+        refreshCalcDisplay();
+    }
+
+    function pressEquals() {
+        if (!currentExpr) return;
+        try {
+            var result = math.evaluate(currentExpr);
+            if (typeof result === "number" && Number.isFinite(result)) {
+                calcResultDisplay.textContent = formatCurrency(result);
+                appendResultLineToExpr(result);
+                currentExpr = String(result);
+                calcExprLine.textContent = " ";
+            }
+        } catch (err) {
+            // Invalid expression (e.g. "7+") — ignore the press.
+        }
+    }
+
+    // Mouse: event delegation on the whole panel handles button clicks
+    // AND keeps the hidden keyboard-capture input focused afterward.
+    calcPanel.addEventListener("click", function (e) {
+        var btn = e.target.closest(".calc-btn");
+        if (btn) {
+            if (btn.dataset.digit !== undefined) {
+                pressDigit(btn.dataset.digit);
+            } else if (btn.dataset.op !== undefined) {
+                pressOperator(btn.dataset.op);
+            } else if (btn.dataset.action === "ac") {
+                pressClear();
+            } else if (btn.dataset.action === "decimal") {
+                pressDecimal();
+            } else if (btn.dataset.action === "negate") {
+                pressNegate();
+            } else if (btn.dataset.action === "percent") {
+                pressPercent();
+            } else if (btn.dataset.action === "equals") {
+                pressEquals();
+            }
+        }
+        kbInput.focus();
     });
 
-    document.querySelectorAll(".calc-btn[data-op]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            if (!currentExpr) return; // don't start an expression with an operator
-            currentExpr += btn.dataset.op;
-            refreshCalcDisplay();
-        });
-    });
-
-    document.querySelectorAll(".calc-btn[data-action]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            var action = btn.dataset.action;
-
-            if (action === "ac") {
-                currentExpr = "";
-                refreshCalcDisplay();
-                return;
-            }
-
-            if (action === "decimal") {
-                var trailing = currentExpr.match(/(\d*\.?\d*)$/)[0];
-                if (trailing.indexOf(".") === -1) currentExpr += ".";
-                refreshCalcDisplay();
-                return;
-            }
-
-            if (action === "negate") {
-                var match = currentExpr.match(/(\d+\.?\d*)$/);
-                if (match) {
-                    var numStr = match[0];
-                    var start = currentExpr.length - numStr.length;
-                    var negated = (start > 0 && currentExpr[start - 1] === "-")
-                        ? numStr
-                        : "-" + numStr;
-                    var prefixEnd = (start > 0 && currentExpr[start - 1] === "-") ? start - 1 : start;
-                    currentExpr = currentExpr.slice(0, prefixEnd) + negated;
-                }
-                refreshCalcDisplay();
-                return;
-            }
-
-            if (action === "percent") {
-                var m = currentExpr.match(/(\d+\.?\d*)$/);
-                if (m) {
-                    var num = parseFloat(m[0]) / 100;
-                    currentExpr = currentExpr.slice(0, currentExpr.length - m[0].length) + num;
-                }
-                refreshCalcDisplay();
-                return;
-            }
-
-            if (action === "equals") {
-                if (!currentExpr) return;
-                try {
-                    var result = math.evaluate(currentExpr);
-                    if (typeof result === "number" && Number.isFinite(result)) {
-                        calcResultDisplay.textContent = formatCurrency(result);
-                        appendResultLineToExpr(result);
-                        currentExpr = String(result);
-                        calcExprLine.textContent = " ";
-                    }
-                } catch (err) {
-                    // Invalid expression (e.g. "7+") — ignore the press.
-                }
-            }
-        });
+    // Keyboard: click anywhere on the panel focuses the hidden input,
+    // which then captures keydown for the full calculator keymap.
+    kbInput.addEventListener("keydown", function (e) {
+        if (/^[0-9]$/.test(e.key)) {
+            pressDigit(e.key);
+            e.preventDefault();
+        } else if (e.key === ".") {
+            pressDecimal();
+            e.preventDefault();
+        } else if (e.key === "+" || e.key === "-" || e.key === "*" || e.key === "/") {
+            pressOperator(e.key);
+            e.preventDefault();
+        } else if (e.key === "Enter" || e.key === "=") {
+            pressEquals();
+            e.preventDefault();
+        } else if (e.key === "Backspace") {
+            pressBackspace();
+            e.preventDefault();
+        } else if (e.key === "Escape") {
+            pressClear();
+            e.preventDefault();
+        } else if (e.key === "%") {
+            pressPercent();
+            e.preventDefault();
+        }
     });
 
     refreshCalcDisplay();
