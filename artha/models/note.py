@@ -5,9 +5,11 @@ class Note(db.Model):
     __tablename__ = "note"
 
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0, index=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     def __repr__(self) -> str:
         return f"<Note {self.id}>"

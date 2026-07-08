@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Notes{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script type="module">
+            import { showToast } from "{{ url_for('static', filename='js/toast.js') }}";
+            document.addEventListener('DOMContentLoaded', function () {
+                {% for category, message in messages %}
+                    showToast({{ message|tojson }}, {{ category|tojson }});
+                {% endfor %}
+            });
+        </script>
+    {% endif %}
+{% endwith %}
+
+<style>
+    #note-content-input {
+        resize: none;
+        overflow: hidden;
+    }
+    .note-card {
+        position: relative;
+    }
+    .note-delete-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+        padding: 4px;
+        border-radius: 6px;
+        transition: color 0.12s ease, background 0.12s ease;
+    }
+    .note-delete-btn:hover { color: var(--red); background: var(--red-dim); }
+</style>
+
+<div class="eyebrow" style="margin-bottom:8px;">NOTES</div>
+<h1 style="font-family:'Fraunces',serif; font-size:32px; font-weight:300; color:var(--text-primary); margin:0 0 24px;">Thinking, captured</h1>
+
+<!-- Add note form -->
+<div class="glass-card" style="padding:20px; margin-bottom:24px;">
+    <form method="POST" action="{{ url_for('notes.notes_page') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <input
+            type="text"
+            name="title"
+            placeholder="Title (optional)"
+            class="field-input w-full"
+            style="margin-bottom:10px; font-weight:600;"
+        >
+
+        <textarea
+            id="note-content-input"
+            name="content"
+            rows="1"
+            placeholder="Write a note..."
+            class="field-input w-full"
+            required
+            style="margin-bottom:12px;"
+        ></textarea>
+
+        <button type="submit" class="btn-primary" style="padding:10px 22px; font-size:14px;">
+            Add Note
+        </button>
+    </form>
+</div>
+
+{% if notes %}
+    <ul class="notes-masonry" style="list-style:none; padding:0; margin:0;">
+        {% for note in notes %}
+            <li class="note-row">
+                <div class="glass-card note-card" style="padding:20px;" data-id="{{ note.id }}">
+                    <button type="button" class="note-delete-btn" data-id="{{ note.id }}" title="Delete" aria-label="Delete note">
+                        &#128465;
+                    </button>
+
+                    {% if note.title %}
+                        <div style="font-weight:700; color:var(--text-primary); font-size:16px; margin:0 28px 8px 0; word-break:break-word;">{{ note.title }}</div>
+                    {% endif %}
+
+                    <p style="color:var(--text-secondary); font-size:14px; line-height:1.5; margin:0 0 20px; word-break:break-word;">{{ note.content|truncate(120) }}</p>
+
+                    <div style="text-align:right; font-size:11px; color:var(--text-muted);">
+                        {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
+                    </div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div style="text-align:center; padding:80px 20px; color:var(--text-muted);">
+        <div style="font-size:36px; margin-bottom:14px;" aria-hidden="true">&#128221;</div>
+        <div style="font-size:14px;">No notes yet. Capture your first thought.</div>
+    </div>
+{% endif %}
+
+<script>
+(function () {
+    var textarea = document.getElementById("note-content-input");
+
+    function autoGrow() {
+        textarea.style.height = "auto";
+        textarea.style.height = textarea.scrollHeight + "px";
+    }
+    textarea.addEventListener("input", autoGrow);
+    autoGrow();
+
+    function getCsrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute("content") : "";
+    }
+
+    document.querySelectorAll(".note-delete-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var id = btn.dataset.id;
+            var card = btn.closest(".note-row");
+
+            fetch("/delete_note/" + id, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": getCsrfToken(),
+                    "X-CSRF-Token": getCsrfToken(),
+                },
+            })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (result) {
+                    if (!result.ok) {
+                        console.warn("Delete failed:", result.data && result.data.message);
+                        return;
+                    }
+                    if (card) card.remove();
+
+                    var list = document.querySelector(".notes-masonry");
+                    if (list && !list.querySelector(".note-row")) {
+                        window.location.reload();
+                    }
+                })
+                .catch(function (err) {
+                    console.error("Network error deleting note:", err);
+                });
+        });
+    });
+})();
+</script>
+
+{% endblock %}

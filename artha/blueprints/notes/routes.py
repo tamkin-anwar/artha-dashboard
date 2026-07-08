@@ -13,6 +13,49 @@ from . import notes_bp
 log = logging.getLogger(__name__)
 
 
+@notes_bp.route("/notes", methods=["GET", "POST"])
+@login_required
+def notes_page():
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+
+        if not content:
+            flash("Note content is required.", "error")
+            return redirect(url_for("notes.notes_page"))
+
+        max_pos = (
+            db.session.query(func.max(Note.position))
+            .filter_by(user_id=current_user.id)
+            .scalar()
+            or 0
+        )
+        new_note = Note(
+            title=title or None,
+            content=content,
+            user_id=current_user.id,
+            position=int(max_pos) + 1,
+        )
+
+        try:
+            db.session.add(new_note)
+            db.session.commit()
+            flash("Note added!", "success")
+        except Exception as e:
+            db.session.rollback()
+            log.error("Error adding note: %s", e, exc_info=True)
+            flash("Error adding note", "error")
+
+        return redirect(url_for("notes.notes_page"))
+
+    notes = (
+        Note.query.filter_by(user_id=current_user.id)
+        .order_by(Note.position.asc(), Note.id.asc())
+        .all()
+    )
+    return render_template("notes.html", notes=notes)
+
+
 @notes_bp.route("/update_note/<int:note_id>", methods=["POST"])
 @login_required
 def update_note(note_id):
