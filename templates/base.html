@@ -113,13 +113,13 @@
                 </nav>
 
                 <!-- User chip -->
-                <div style="padding:16px 16px 0; border-top:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
+                <div style="padding:20px 16px 24px; border-top:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
                     <div style="width:32px; height:32px; border-radius:50%; background:var(--gold-dim); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--gold); font-family:'Fraunces',serif; flex-shrink:0;">
                         {{ current_user.first_name[0] if current_user.is_authenticated and current_user.first_name else '?' }}
                     </div>
-                    <div style="min-width:0;">
+                    <div style="min-width:0; overflow:hidden;">
                         <div style="font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ current_user.first_name if current_user.is_authenticated else 'Guest' }}</div>
-                        <div style="font-size:11px; color:var(--text-secondary);">Personal OS</div>
+                        <div style="font-size:11px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Personal OS</div>
                     </div>
                 </div>
 
