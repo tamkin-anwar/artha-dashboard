@@ -483,6 +483,7 @@ async function saveTransaction(e) {
     const dateInput = row.querySelector(".tx-date");
     if (!descEl || !amountEl || !typeSelect) return;
 
+    const dateBeforeSave = row.dataset.date;
     const desc = descEl.textContent.trim();
     const type = typeSelect.value;
     const dateValue = dateInput ? dateInput.value : "";
@@ -534,18 +535,23 @@ async function saveTransaction(e) {
         applyAmountTypeDataset(amountEl, type);
 
         if (responseData.date) {
-            // Update the row's underlying date + visible label in place —
-            // deliberately NOT calling resortTransactionRows() here. Moving
-            // the row to its new date position mid-edit is disorienting;
-            // the row keeps its current spot until the next full re-sort
-            // (page load, or a new transaction being added). The stored
-            // data-date is still correct, so sorting on that next trigger
-            // lands it in the right place.
+            // Update the row's underlying date + visible label in place.
+            // Only resort when the date itself actually changed — editing
+            // just the description/amount/type still skips the resort, so
+            // the row doesn't jump position mid-edit for unrelated fields.
+            // But an actual date change means the row is now in the wrong
+            // bucket/divider, so it does need to move.
+            const dateChanged = responseData.date !== dateBeforeSave;
+
             row.dataset.date = responseData.date;
             if (dateInput) dateInput.value = responseData.date;
             const dateLabel = row.querySelector(".tx-date-label");
             if (dateLabel && responseData.date_label) {
                 dateLabel.textContent = responseData.date_label;
+            }
+
+            if (dateChanged) {
+                resortTransactionRows();
             }
         }
 
