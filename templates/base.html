@@ -72,7 +72,7 @@
         {% set is_finance_active = request.endpoint == 'finance.finance_page' %}
         {% set is_notes_active = request.endpoint == 'dashboard.index' and current_view == 'notes' %}
         {% set is_calculator_active = request.endpoint == 'dashboard.index' and current_view == 'calculator' %}
-        {% set is_calendar_active = request.endpoint == 'dashboard.index' and current_view == 'calendar' %}
+        {% set is_calendar_active = request.endpoint == 'dashboard.calendar_page' %}
         {% set is_scenarios_active = request.endpoint and 'scenario' in request.endpoint %}
         {% set is_ai_active = request.endpoint == 'ai.page' %}
 
