@@ -60,6 +60,37 @@
     .cal-type-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; }
     .cal-type-badge.income { background: var(--emerald-dim); color: var(--emerald); }
     .cal-type-badge.expense { background: var(--red-dim); color: var(--red); }
+
+    .cal-day-name-short { display: none; }
+
+    @keyframes cal-slide-up {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Mobile (<768px): stack the grid above the day panel instead of side
+       by side, shrink the toolbar buttons and day cells, and swap the
+       weekday headers down to single letters so nothing feels cramped. */
+    @media (max-width: 767px) {
+        .cal-layout {
+            grid-template-columns: 1fr !important;
+        }
+        .cal-day-name-full { display: none; }
+        .cal-day-name-short { display: inline; }
+        .cal-day-cell {
+            min-height: 44px;
+        }
+        .cal-toolbar-btn-row {
+            gap: 6px !important;
+        }
+        .cal-toolbar-btn {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+        }
+        #day-detail-content.cal-panel-enter {
+            animation: cal-slide-up 0.3s ease-out;
+        }
+    }
 </style>
 
 <div class="eyebrow" style="margin-bottom:8px;">CALENDAR</div>
@@ -71,9 +102,9 @@
         <h1 style="font-family:'Fraunces',serif; font-size:28px; font-weight:400; color:var(--text-primary); margin:0; min-width:200px; text-align:center;">{{ month_label }}</h1>
         <a href="{{ url_for('dashboard.calendar_page', month=next_month_value) }}" class="cal-nav-btn" aria-label="Next month">&gt;</a>
     </div>
-    <div style="display:flex; gap:10px;">
-        <a href="{{ url_for('dashboard.calendar_page') }}" class="btn-secondary" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">Today</a>
-        <a href="{{ url_for('finance.finance_page') }}" class="btn-primary" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">+ Add Event</a>
+    <div style="display:flex; gap:10px;" class="cal-toolbar-btn-row">
+        <a href="{{ url_for('dashboard.calendar_page') }}" class="btn-secondary cal-toolbar-btn" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">Today</a>
+        <a href="{{ url_for('finance.finance_page') }}" class="btn-primary cal-toolbar-btn" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">+ Add Event</a>
     </div>
 </div>
 
@@ -82,7 +113,9 @@
     <div class="glass-card" style="padding:20px; background:var(--bg-surface);">
         <div style="display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px;">
             {% for name in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
-                <div style="text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:6px 0;">{{ name }}</div>
+                <div style="text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:6px 0;">
+                    <span class="cal-day-name-full">{{ name }}</span><span class="cal-day-name-short">{{ name[0] }}</span>
+                </div>
             {% endfor %}
         </div>
         <div id="calendar-grid" style="display:grid; grid-template-columns:repeat(7,1fr); border-top:1px solid var(--border-subtle); border-left:1px solid var(--border-subtle);">
@@ -184,6 +217,15 @@ window.CALENDAR_TODAY = {{ today_value|tojson }};
         }
 
         container.innerHTML = html;
+
+        // Restart the slide-up animation on every render (mobile only —
+        // the keyframe is scoped inside the max-width:767px media query,
+        // so this is a harmless no-op on desktop). Removing the class,
+        // forcing a reflow, then re-adding it is what makes the animation
+        // replay on every day switch instead of just the first paint.
+        container.classList.remove("cal-panel-enter");
+        void container.offsetWidth;
+        container.classList.add("cal-panel-enter");
     }
 
     function escapeHtml(str) {
