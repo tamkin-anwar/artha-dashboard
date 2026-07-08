@@ -88,6 +88,81 @@ async function updateSummaryUI() {
 }
 
 // -----------------------------------------------------------------------
+// Refresh the stat cards / summary card / trend chart after an inline
+// edit or delete changes the numbers behind them. The transaction list
+// itself is already updated in place by the caller, so this deliberately
+// leaves #tx-list alone — it re-fetches the current finance page (same
+// ?month= filter the user is currently looking at) and pulls the fresh
+// values out of the returned HTML rather than doing a full navigation.
+// -----------------------------------------------------------------------
+
+const FINANCIAL_SUMMARY_IDS = [
+    "fp-stat-income",
+    "fp-stat-expense",
+    "fp-stat-net",
+    "fp-stat-tx-count",
+    "fp-savings-rate",
+    "fp-biggest-category",
+    "fp-biggest-day",
+];
+
+async function refreshFinancialSummary() {
+    // Only meaningful on the full finance page — the dashboard's small
+    // finance widget doesn't have any of these elements.
+    if (!document.getElementById("fp-stat-income")) return;
+
+    try {
+        const url = window.location.pathname + window.location.search;
+        const res = await fetch(url, {
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        if (!res.ok) return;
+
+        const html = await res.text();
+        const freshDoc = new DOMParser().parseFromString(html, "text/html");
+
+        FINANCIAL_SUMMARY_IDS.forEach((id) => {
+            const freshEl = freshDoc.getElementById(id);
+            const liveEl = document.getElementById(id);
+            if (freshEl && liveEl) {
+                liveEl.textContent = freshEl.textContent;
+            }
+        });
+
+        const chart = window.__monthlyTrendChart;
+        const freshCanvas = freshDoc.getElementById("monthlyTrendChart");
+        if (chart && freshCanvas) {
+            let trendData = [];
+            try {
+                trendData = JSON.parse(freshCanvas.dataset.trend || "[]");
+            } catch (parseErr) {
+                console.warn("Could not parse refreshed trend data:", parseErr);
+            }
+
+            const labels = trendData.map((d) => d.label);
+            const values = trendData.map((d) => d.net);
+
+            const getVar = (name, fallback) => {
+                const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                return v || fallback;
+            };
+            const emerald = getVar("--emerald", "#22c55e");
+            const red = getVar("--red", "#ef4444");
+            const barColors = values.map((v) => (v >= 0 ? emerald : red));
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = values;
+            chart.data.datasets[0].backgroundColor = barColors;
+            chart.data.datasets[1].data = values;
+            chart.update();
+        }
+    } catch (err) {
+        console.warn("Could not refresh financial summary:", err);
+    }
+}
+
+// -----------------------------------------------------------------------
 // Date-based sorting & grouping — replaces manual drag-to-reorder. Rows
 // are always displayed newest-first by their data-date attribute, with a
 // divider inserted above the first row of each distinct date.
@@ -261,6 +336,7 @@ function attachDeleteListener(row) {
 
             await updateChartData();
             await updateSummaryUI();
+            await refreshFinancialSummary();
             document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
         } catch (err) {
             console.error("Network error deleting transaction:", err);
@@ -479,6 +555,7 @@ async function saveTransaction(e) {
 
         await updateChartData();
         await updateSummaryUI();
+        await refreshFinancialSummary();
         document.dispatchEvent(new CustomEvent("currency-refresh-ui"));
     } catch (err) {
         console.error("Network error updating transaction:", err);

@@ -59,7 +59,7 @@
             <span style="width:8px; height:8px; border-radius:50%; background:var(--emerald); display:inline-block;"></span>
             <span class="eyebrow">Income</span>
         </div>
-        <div class="stat-number money-positive" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(income) }}</div>
+        <div id="fp-stat-income" class="stat-number money-positive" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(income) }}</div>
         {% if comparison %}
             <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.income.favorable else 'var(--red)' }};">
                 {{ '↑' if comparison.income.up else '↓' }} ${{ '%.2f'|format(comparison.income.delta) }} {{ 'more' if comparison.income.up else 'less' }} than last month
@@ -71,7 +71,7 @@
             <span style="width:8px; height:8px; border-radius:50%; background:var(--red); display:inline-block;"></span>
             <span class="eyebrow">Expenses</span>
         </div>
-        <div class="stat-number money-negative" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(expense) }}</div>
+        <div id="fp-stat-expense" class="stat-number money-negative" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(expense) }}</div>
         {% if comparison %}
             <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.expense.favorable else 'var(--red)' }};">
                 {{ '↑' if comparison.expense.up else '↓' }} ${{ '%.2f'|format(comparison.expense.delta) }} {{ 'more' if comparison.expense.up else 'less' }} than last month
@@ -83,7 +83,7 @@
             <span style="width:8px; height:8px; border-radius:50%; background:var(--gold); display:inline-block;"></span>
             <span class="eyebrow">Net</span>
         </div>
-        <div class="stat-number money-gold" style="font-size:24px;">${{ "%.2f"|format(balance) }}</div>
+        <div id="fp-stat-net" class="stat-number money-gold" style="font-size:24px;">${{ "%.2f"|format(balance) }}</div>
         {% if comparison %}
             <p style="font-size:12px; margin:6px 0 0; color:{{ 'var(--emerald)' if comparison.net.favorable else 'var(--red)' }};">
                 {{ '↑' if comparison.net.up else '↓' }} ${{ '%.2f'|format(comparison.net.delta) }} {{ 'more' if comparison.net.up else 'less' }} than last month
@@ -95,7 +95,7 @@
             <span style="width:8px; height:8px; border-radius:50%; background:var(--sky); display:inline-block;"></span>
             <span class="eyebrow">Transactions</span>
         </div>
-        <div class="stat-number" style="font-family:'JetBrains Mono',monospace; font-size:24px;">{{ transactions|length }}</div>
+        <div id="fp-stat-tx-count" class="stat-number" style="font-family:'JetBrains Mono',monospace; font-size:24px;">{{ transactions|length }}</div>
     </div>
 </div>
 
@@ -105,17 +105,17 @@
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:20px;">
         <div>
             <p class="eyebrow" style="margin-bottom:6px;">Savings Rate</p>
-            <p style="font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin:0; color:{% if savings_rate > 20 %}var(--gold){% elif savings_rate < 0 %}var(--red){% else %}var(--text-primary){% endif %};">
+            <p id="fp-savings-rate" style="font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin:0; color:{% if savings_rate > 20 %}var(--gold){% elif savings_rate < 0 %}var(--red){% else %}var(--text-primary){% endif %};">
                 {{ '%.1f'|format(savings_rate) }}%
             </p>
         </div>
         <div>
             <p class="eyebrow" style="margin-bottom:6px;">Biggest Expense Category</p>
-            <p style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_category or '—' }}</p>
+            <p id="fp-biggest-category" style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_category or '—' }}</p>
         </div>
         <div>
             <p class="eyebrow" style="margin-bottom:6px;">Highest Spending Day</p>
-            <p style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_day_label or '—' }}</p>
+            <p id="fp-biggest-day" style="font-size:16px; font-weight:600; color:var(--text-primary); margin:0;">{{ biggest_day_label or '—' }}</p>
         </div>
     </div>
 </div>
@@ -124,7 +124,7 @@
 <div class="glass-card" style="padding:20px; margin-bottom:24px;">
     <div class="eyebrow" style="margin-bottom:14px;">6-Month Trend</div>
     <div style="position:relative; height:220px;">
-        <canvas id="monthlyTrendChart"></canvas>
+        <canvas id="monthlyTrendChart" data-trend='{{ trend_data|tojson }}'></canvas>
     </div>
 </div>
 
