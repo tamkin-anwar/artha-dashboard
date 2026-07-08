@@ -107,7 +107,7 @@
                     <a href="{{ url_for('dashboard.index', view='calculator') }}" class="nav-link {{ 'nav-active' if is_calculator_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
                         <i data-lucide="calculator" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Calculator
                     </a>
-                    <a href="{{ url_for('dashboard.index', view='calendar') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
+                    <a href="{{ url_for('dashboard.calendar_page') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;">
                         <i data-lucide="calendar" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Calendar
                     </a>
                 </nav>
@@ -218,7 +218,7 @@
                     <a href="{{ url_for('dashboard.index', view='notes') }}" class="nav-link {{ 'nav-active' if is_notes_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;"><i data-lucide="file-text" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Notes</a>
                     <a href="{{ url_for('ai.page') }}" class="nav-link {{ 'nav-active' if is_ai_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;"><i data-lucide="sparkles" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> AI Assistant</a>
                     <a href="{{ url_for('dashboard.index', view='calculator') }}" class="nav-link {{ 'nav-active' if is_calculator_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;"><i data-lucide="calculator" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Calculator</a>
-                    <a href="{{ url_for('dashboard.index', view='calendar') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;"><i data-lucide="calendar" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Calendar</a>
+                    <a href="{{ url_for('dashboard.calendar_page') }}" class="nav-link {{ 'nav-active' if is_calendar_active }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; text-decoration:none; font-size:14px;"><i data-lucide="calendar" aria-hidden="true" style="width:16px; height:16px; stroke-width:1.5; color:inherit; flex-shrink:0;"></i> Calendar</a>
 
                     <div style="margin:10px 0; height:1px; background:var(--border-subtle);"></div>
 
