@@ -6,12 +6,22 @@ if (widget) initAI();
 
 function initAI() {
     const messagesEl  = document.getElementById("ai-messages");
-    const emptyState  = document.getElementById("ai-empty-state");
     const inputEl     = document.getElementById("ai-input");
     const sendBtn     = document.getElementById("ai-send-btn");
     const insightsBtn = document.getElementById("ai-insights-btn");
     const clearBtn    = document.getElementById("ai-clear-btn");
     const CSRF        = widget.dataset.csrf;
+
+    const EMPTY_STATE_HTML = `
+        <div id="ai-empty-state" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; text-align:center;">
+            <div class="ai-orb" id="ai-orb"></div>
+            <div style="font-family:'Fraunces',serif; font-size:24px; color:var(--text-primary);">Artha AI</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:480px;">
+                <button type="button" class="ai-chip" data-chip="insights">&#10022; Get financial insights</button>
+                <button type="button" class="ai-chip" data-chip="spend">&#128184; How much did I spend this month?</button>
+                <button type="button" class="ai-chip" data-chip="savings">&#128202; What's my savings rate?</button>
+            </div>
+        </div>`;
 
     // Client-owned conversation history — sent with every request,
     // never stored on the server.
@@ -26,6 +36,14 @@ function initAI() {
         document.getElementById("ai-empty-state")?.remove();
     }
 
+    function showClearBtn() {
+        clearBtn.style.display = "";
+    }
+
+    function scrollToBottom() {
+        messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+    }
+
     function formatText(raw) {
         // Minimal safe rendering: escape HTML, then apply basic markdown.
         return raw
@@ -37,42 +55,105 @@ function initAI() {
             .replace(/\n/g, "<br>");
     }
 
+    // Walks the already-escaped/markdown'd DOM fragment and wraps each
+    // word of text in its own span with a staggered animation-delay, so
+    // the response reads as if it's arriving word by word — without ever
+    // touching raw HTML strings (avoids breaking <strong>/<em>/<br> tags).
+    function wrapWordsForAnimation(root) {
+        let wordIndex = 0;
+        const MAX_STAGGERED = 120; // cap so very long replies don't trail off for seconds
+
+        function walk(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const parts = node.textContent.split(/(\s+)/);
+                const frag = document.createDocumentFragment();
+                parts.forEach((chunk) => {
+                    if (chunk === "") return;
+                    if (/^\s+$/.test(chunk)) {
+                        frag.appendChild(document.createTextNode(chunk));
+                        return;
+                    }
+                    const span = document.createElement("span");
+                    span.className = "ai-word";
+                    span.style.animationDelay = (Math.min(wordIndex, MAX_STAGGERED) * 28) + "ms";
+                    span.textContent = chunk;
+                    frag.appendChild(span);
+                    wordIndex++;
+                });
+                node.replaceWith(frag);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                Array.from(node.childNodes).forEach(walk);
+            }
+        }
+
+        Array.from(root.childNodes).forEach(walk);
+    }
+
     function appendMessage(role, text) {
-        hideEmpty();
-        const isUser = role === "user";
+        if (role === "user") {
+            hideEmpty();
+            showClearBtn();
 
-        const row = document.createElement("div");
-        row.className = `flex ${isUser ? "justify-end" : "justify-start"}`;
+            const row = document.createElement("div");
+            row.className = "ai-row user";
+            const bubble = document.createElement("div");
+            bubble.className = "ai-bubble-user";
+            bubble.textContent = text;
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            scrollToBottom();
+            return;
+        }
 
-        const bubble = document.createElement("div");
-        bubble.className = [
-            "max-w-[88%] px-3 py-2 rounded-xl text-sm leading-relaxed",
-            isUser
-                ? "bg-blue-600 text-white rounded-br-none"
-                : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-sm",
-        ].join(" ");
+        // Assistant: if a loading orb is present, let it play a brief
+        // "speaking" pulse (thinking -> speaking) before swapping in the
+        // real message, matching the idle -> thinking -> speaking ->
+        // rendered sequence.
+        const loadingOrb = document.getElementById("ai-loading-orb");
 
-        bubble.innerHTML = formatText(text);
-        row.appendChild(bubble);
-        messagesEl.appendChild(row);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        const renderNow = () => {
+            removeLoading();
+
+            const row = document.createElement("div");
+            row.className = "ai-row assistant";
+
+            const avatar = document.createElement("div");
+            avatar.className = "ai-avatar-dot";
+            avatar.setAttribute("aria-hidden", "true");
+
+            const bubble = document.createElement("div");
+            bubble.className = "ai-bubble-assistant";
+            bubble.innerHTML = formatText(text);
+            wrapWordsForAnimation(bubble);
+
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            scrollToBottom();
+        };
+
+        if (loadingOrb) {
+            loadingOrb.classList.remove("thinking");
+            loadingOrb.classList.add("speaking");
+            setTimeout(renderNow, 450);
+        } else {
+            renderNow();
+        }
     }
 
     function appendLoading() {
         hideEmpty();
         const row = document.createElement("div");
         row.id = "ai-loading-row";
-        row.className = "flex justify-start";
-        row.innerHTML = `
-            <div class="px-3 py-2.5 rounded-xl rounded-bl-none bg-white dark:bg-gray-900 shadow-sm">
-                <span class="flex space-x-1 items-center">
-                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
-                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:120ms"></span>
-                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:240ms"></span>
-                </span>
-            </div>`;
+        row.className = "ai-row assistant";
+
+        const orb = document.createElement("div");
+        orb.className = "ai-orb ai-orb-mini thinking";
+        orb.id = "ai-loading-orb";
+
+        row.appendChild(orb);
         messagesEl.appendChild(row);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        scrollToBottom();
     }
 
     function removeLoading() {
@@ -81,15 +162,24 @@ function initAI() {
 
     function appendError(msg) {
         removeLoading();
+
         const row = document.createElement("div");
-        row.className = "flex justify-start";
-        row.innerHTML = `
-            <div class="max-w-[88%] px-3 py-2 rounded-xl rounded-bl-none text-sm
-                        text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 shadow-sm">
-                ${msg}
-            </div>`;
+        row.className = "ai-row assistant";
+
+        const avatar = document.createElement("div");
+        avatar.className = "ai-avatar-dot";
+        avatar.style.background = "var(--red)";
+        avatar.setAttribute("aria-hidden", "true");
+
+        const bubble = document.createElement("div");
+        bubble.className = "ai-bubble-assistant";
+        bubble.style.color = "var(--red)";
+        bubble.textContent = msg;
+
+        row.appendChild(avatar);
+        row.appendChild(bubble);
         messagesEl.appendChild(row);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        scrollToBottom();
     }
 
     // -----------------------------------------------------------------------
@@ -101,8 +191,12 @@ function initAI() {
         sendBtn.disabled     = state;
         insightsBtn.disabled = state;
         inputEl.disabled     = state;
-        if (state) appendLoading();
-        else       removeLoading();
+        if (state) {
+            appendLoading();
+        }
+        // Note: going busy->false no longer removes the loading row here —
+        // appendMessage() owns that transition (thinking -> speaking ->
+        // rendered). appendError() removes it immediately on failure.
     }
 
     // -----------------------------------------------------------------------
@@ -188,12 +282,19 @@ function initAI() {
     function clearConversation() {
         if (busy) return;
         history = [];
-        messagesEl.innerHTML = `
-            <div id="ai-empty-state" class="flex flex-col items-center justify-center h-full text-center">
-                <p class="text-gray-500 dark:text-gray-300 text-sm">Ask me anything about your finances.</p>
-                <p class="text-gray-400 dark:text-gray-400 text-xs mt-1">Or hit <span class="font-medium">✦ Insights</span> for an instant report.</p>
-            </div>`;
+        messagesEl.innerHTML = EMPTY_STATE_HTML;
+        clearBtn.style.display = "none";
     }
+
+    // -----------------------------------------------------------------------
+    // Input auto-resize (up to 5 lines, capped via CSS max-height)
+    // -----------------------------------------------------------------------
+
+    function autoResizeInput() {
+        inputEl.style.height = "auto";
+        inputEl.style.height = inputEl.scrollHeight + "px";
+    }
+    inputEl.addEventListener("input", autoResizeInput);
 
     // -----------------------------------------------------------------------
     // Event listeners
@@ -203,6 +304,7 @@ function initAI() {
         const msg = inputEl.value.trim();
         if (!msg) return;
         inputEl.value = "";
+        autoResizeInput();
         sendMessage(msg);
     });
 
@@ -212,10 +314,28 @@ function initAI() {
             const msg = inputEl.value.trim();
             if (!msg) return;
             inputEl.value = "";
+            autoResizeInput();
             sendMessage(msg);
         }
     });
 
     insightsBtn.addEventListener("click", fetchInsights);
     clearBtn.addEventListener("click", clearConversation);
+
+    // Event delegation for suggestion chips — survives clearConversation()
+    // rebuilding the empty-state markup, since messagesEl itself never
+    // gets replaced, only its children.
+    messagesEl.addEventListener("click", (e) => {
+        const chip = e.target.closest(".ai-chip");
+        if (!chip || busy) return;
+
+        const kind = chip.dataset.chip;
+        if (kind === "insights") {
+            fetchInsights();
+        } else if (kind === "spend") {
+            sendMessage("How much did I spend this month?");
+        } else if (kind === "savings") {
+            sendMessage("What's my savings rate?");
+        }
+    });
 }
