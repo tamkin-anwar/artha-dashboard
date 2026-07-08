@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script type="module">
+            import { showToast } from "{{ url_for('static', filename='js/toast.js') }}";
+            document.addEventListener('DOMContentLoaded', function () {
+                {% for category, message in messages %}
+                    showToast({{ message|tojson }}, {{ category|tojson }});
+                {% endfor %}
+            });
+        </script>
+    {% endif %}
+{% endwith %}
+
+<style>
+    .cal-day-cell {
+        min-height: 100px;
+        border: 1px solid var(--border-subtle);
+        border-right: none;
+        border-bottom: none;
+        text-align: left;
+        padding: 8px;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+    }
+    #calendar-grid .cal-day-cell:nth-child(7n) { border-right: 1px solid var(--border-subtle); }
+    #calendar-grid .cal-day-cell:nth-last-child(-n+7) { border-bottom: 1px solid var(--border-subtle); }
+    .cal-day-cell:hover { background: var(--bg-hover); }
+    .cal-day-cell.cal-day-weekend { background: rgba(255,255,255,0.02); }
+    .cal-day-cell.cal-day-weekend:hover { background: var(--bg-hover); }
+    .cal-day-cell.cal-day-out-of-month .cal-day-number { color: var(--text-muted); opacity: 0.4; }
+    .cal-day-cell.cal-day-selected { border: 2px solid var(--gold); z-index: 1; }
+    .cal-day-number { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .cal-day-cell.cal-day-selected .cal-day-number { color: var(--text-primary); }
+    .cal-day-today-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: var(--gold); color: #000; font-weight: 600;
+    }
+    .cal-dots { display: flex; align-items: center; gap: 3px; margin-top: auto; }
+    .cal-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .cal-day-net { font-size: 9px; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .cal-nav-btn {
+        background: none; border: none; color: var(--text-secondary); cursor: pointer;
+        font-size: 18px; line-height: 1; padding: 4px 8px; text-decoration: none;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px;
+    }
+    .cal-nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .cal-tx-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+    .cal-tx-row:last-child { border-bottom: none; }
+    .cal-type-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; }
+    .cal-type-badge.income { background: var(--emerald-dim); color: var(--emerald); }
+    .cal-type-badge.expense { background: var(--red-dim); color: var(--red); }
+</style>
+
+<div class="eyebrow" style="margin-bottom:8px;">CALENDAR</div>
+
+<!-- Top bar -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:14px;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <a href="{{ url_for('dashboard.calendar_page', month=prev_month_value) }}" class="cal-nav-btn" aria-label="Previous month">&lt;</a>
+        <h1 style="font-family:'Fraunces',serif; font-size:28px; font-weight:400; color:var(--text-primary); margin:0; min-width:200px; text-align:center;">{{ month_label }}</h1>
+        <a href="{{ url_for('dashboard.calendar_page', month=next_month_value) }}" class="cal-nav-btn" aria-label="Next month">&gt;</a>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <a href="{{ url_for('dashboard.calendar_page') }}" class="btn-secondary" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">Today</a>
+        <a href="{{ url_for('finance.finance_page') }}" class="btn-primary" style="padding:9px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center;">+ Add Event</a>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:65% 35%; gap:24px; align-items:start;" class="cal-layout">
+    <!-- LEFT: month grid -->
+    <div class="glass-card" style="padding:20px; background:var(--bg-surface);">
+        <div style="display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px;">
+            {% for name in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+                <div style="text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:6px 0;">{{ name }}</div>
+            {% endfor %}
+        </div>
+        <div id="calendar-grid" style="display:grid; grid-template-columns:repeat(7,1fr); border-top:1px solid var(--border-subtle); border-left:1px solid var(--border-subtle);">
+            {% for d in grid_days %}
+                <button type="button"
+                    class="cal-day-cell {{ 'cal-day-weekend' if d.is_weekend }} {{ 'cal-day-out-of-month' if not d.in_month }} {{ 'cal-day-selected' if d.date == today_value }}"
+                    data-date="{{ d.date }}"
+                    aria-label="{{ d.date }}"
+                >
+                    {% if d.is_today %}
+                        <span class="cal-day-today-badge cal-day-number">{{ d.day }}</span>
+                    {% else %}
+                        <span class="cal-day-number">{{ d.day }}</span>
+                    {% endif %}
+                    <div class="cal-dots">
+                        {% if d.income_dot %}<span class="cal-dot" style="background:var(--emerald);"></span>{% endif %}
+                        {% if d.expense_dot %}<span class="cal-dot" style="background:var(--red);"></span>{% endif %}
+                        {% if d.recurring_dot %}<span class="cal-dot" style="background:var(--gold);"></span>{% endif %}
+                    </div>
+                    {% if d.net != 0 %}
+                        <span class="cal-day-net" style="color:{{ 'var(--emerald)' if d.net > 0 else 'var(--red)' }};">{{ '+' if d.net > 0 else '-' }}${{ '%.0f'|format(d.net|abs) }}</span>
+                    {% endif %}
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- RIGHT: day detail panel -->
+    <div class="glass-card" style="padding:24px; min-height:420px; display:flex; flex-direction:column; gap:18px;">
+        <div id="day-detail-content"></div>
+
+        {% if upcoming_recurring %}
+            <div style="background:var(--gold-dim); border:1px solid var(--gold); border-radius:10px; padding:12px 14px; font-size:13px; color:var(--gold); margin-top:auto;">
+                &#8635; {{ upcoming_recurring.description }} due {{ upcoming_recurring.date_label }}
+                &middot; ${{ '%.2f'|format(upcoming_recurring.amount) }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+window.CALENDAR_DATA = {{ calendar_data|tojson }};
+window.CALENDAR_TODAY = {{ today_value|tojson }};
+
+(function () {
+    function formatHeaderDate(dateStr) {
+        var parts = dateStr.split("-").map(Number);
+        var dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
+        var dayName = dt.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+        var fullDate = dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+        return { dayName: dayName, fullDate: fullDate };
+    }
+
+    function formatMoney(n) {
+        var sign = n < 0 ? "-" : "";
+        return sign + "$" + Math.abs(n).toFixed(2);
+    }
+
+    function renderDayDetail(dateStr) {
+        var container = document.getElementById("day-detail-content");
+        if (!container) return;
+
+        var header = formatHeaderDate(dateStr);
+        var txs = window.CALENDAR_DATA[dateStr] || [];
+
+        var html = "";
+        html += '<div style="margin-bottom:18px;">';
+        html += '<div style="font-family:\'Fraunces\',serif; font-size:26px; color:var(--text-primary);">' + header.dayName + '</div>';
+        html += '<div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">' + header.fullDate + '</div>';
+        html += '</div>';
+
+        if (!txs.length) {
+            html += '<div style="text-align:center; padding:40px 12px; color:var(--text-muted);">';
+            html += '<div style="font-size:28px; margin-bottom:10px;" aria-hidden="true">&#128197;</div>';
+            html += '<div style="font-size:13px;">No transactions this day</div>';
+            html += '</div>';
+        } else {
+            var net = 0;
+            html += '<div>';
+            txs.forEach(function (t) {
+                var signedAmount = t.type === "income" ? t.amount : -t.amount;
+                net += signedAmount;
+                var color = t.type === "income" ? "var(--emerald)" : "var(--red)";
+                html += '<div class="cal-tx-row">';
+                html += '<div style="min-width:0;">';
+                html += '<div style="font-size:14px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(t.description) + (t.is_recurring ? ' <span style="color:var(--gold); font-size:11px;">&#8635;</span>' : '') + '</div>';
+                html += '<span class="cal-type-badge ' + t.type + '">' + t.type + '</span>';
+                html += '</div>';
+                html += '<div style="font-family:\'JetBrains Mono\',monospace; font-size:14px; color:' + color + '; white-space:nowrap;">' + (signedAmount >= 0 ? "+" : "-") + "$" + Math.abs(t.amount).toFixed(2) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            var netColor = net >= 0 ? "var(--emerald)" : "var(--red)";
+            html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--border-subtle);">';
+            html += '<span style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Net</span>';
+            html += '<span style="font-family:\'JetBrains Mono\',monospace; font-size:16px; font-weight:600; color:' + netColor + ';">' + formatMoney(net) + '</span>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function selectDay(dateStr, cellEl) {
+        document.querySelectorAll(".cal-day-cell.cal-day-selected").forEach(function (el) {
+            el.classList.remove("cal-day-selected");
+        });
+        if (cellEl) cellEl.classList.add("cal-day-selected");
+        renderDayDetail(dateStr);
+    }
+
+    document.querySelectorAll(".cal-day-cell").forEach(function (cell) {
+        cell.addEventListener("click", function () {
+            selectDay(cell.dataset.date, cell);
+        });
+    });
+
+    // Default selected day = today.
+    renderDayDetail(window.CALENDAR_TODAY);
+})();
+</script>
+
+{% endblock %}
