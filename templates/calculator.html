@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block title %}Calculator{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script type="module">
+            import { showToast } from "{{ url_for('static', filename='js/toast.js') }}";
+            document.addEventListener('DOMContentLoaded', function () {
+                {% for category, message in messages %}
+                    showToast({{ message|tojson }}, {{ category|tojson }});
+                {% endfor %}
+            });
+        </script>
+    {% endif %}
+{% endwith %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+
+<style>
+    .calc-page-layout {
+        display: grid;
+        grid-template-columns: 55% 45%;
+        gap: 24px;
+        align-items: start;
+    }
+    @media (max-width: 900px) {
+        .calc-page-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Smart expression editor */
+    .expr-wrap {
+        position: relative;
+        background: var(--bg-sidebar);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .expr-stripes {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.025) 0px,
+            rgba(255,255,255,0.025) 36px,
+            transparent 36px,
+            transparent 72px
+        );
+        pointer-events: none;
+    }
+    .expr-cursor-line {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 36px;
+        border-left: 2px solid var(--gold);
+        background: var(--gold-dim);
+        opacity: 0.35;
+        pointer-events: none;
+        transition: top 0.08s ease;
+    }
+    .expr-row {
+        position: relative;
+        display: flex;
+        z-index: 1;
+    }
+    .expr-input-col {
+        flex: 1;
+        min-width: 0;
+    }
+    #expr-textarea {
+        width: 100%;
+        display: block;
+        background: transparent;
+        border: none;
+        outline: none;
+        resize: none;
+        overflow: hidden;
+        color: var(--text-primary);
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        line-height: 36px;
+        padding: 0 16px;
+        white-space: pre;
+        overflow-x: auto;
+    }
+    #expr-results {
+        width: 140px;
+        flex-shrink: 0;
+        border-left: 1px solid var(--border-subtle);
+    }
+    .expr-result-line {
+        height: 36px;
+        line-height: 36px;
+        padding: 0 14px;
+        text-align: right;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        color: var(--gold);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .expr-comment-marker { color: var(--text-muted); }
+
+    /* Example chips */
+    .calc-chip {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all 0.12s ease;
+    }
+    .calc-chip:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--gold); }
+
+    /* Button calculator */
+    .calc-btn {
+        height: 64px;
+        border: none;
+        border-radius: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.1s ease;
+    }
+    .calc-btn:hover { filter: brightness(1.15); }
+    .calc-btn:active { transform: scale(0.96); }
+    .calc-btn-number { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+    .calc-btn-operator { background: var(--gold-dim); color: var(--gold); }
+    .calc-btn-equals { background: var(--gold); color: #000; font-weight: 700; }
+    .calc-btn-clear { background: var(--red-dim); color: var(--red); }
+    .calc-btn-func { background: var(--bg-hover); color: var(--text-secondary); }
+</style>
+
+<div class="eyebrow" style="margin-bottom:8px;">CALCULATOR</div>
+<h1 style="font-family:'Fraunces',serif; font-size:32px; font-weight:300; color:var(--text-primary); margin:0 0 24px;">Quick math, no tab-switching</h1>
+
+<div class="calc-page-layout">
+    <!-- LEFT: Smart expression editor -->
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;">
+            <div>
+                <span class="eyebrow" style="display:block; margin-bottom:4px;">Smart Calculator</span>
+                <p style="font-size:12px; color:var(--text-secondary); margin:0;">Type expressions, assign variables, calculate naturally</p>
+            </div>
+            <button type="button" id="expr-clear-btn" class="btn-secondary" style="padding:7px 14px; font-size:12px; flex-shrink:0;">Clear all</button>
+        </div>
+
+        <div class="expr-wrap">
+            <div class="expr-stripes" aria-hidden="true"></div>
+            <div class="expr-cursor-line" id="expr-cursor-line" aria-hidden="true"></div>
+            <div class="expr-row">
+                <div class="expr-input-col">
+                    <textarea id="expr-textarea" rows="1" spellcheck="false" autocomplete="off"
+                        placeholder="salary = 3600&#10;expenses = 338&#10;savings = salary - expenses"></textarea>
+                </div>
+                <div id="expr-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Button calculator -->
+    <div class="glass-card" style="padding:20px;">
+        <span class="eyebrow" style="display:block; margin-bottom:16px;">Quick Calc</span>
+
+        <div style="text-align:right; margin-bottom:16px; padding:0 4px;">
+            <div id="calc-expr-line" style="font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text-secondary); min-height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">&nbsp;</div>
+            <div id="calc-result-display" style="font-family:'Fraunces',serif; font-size:40px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">0</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; border-radius:16px; overflow:hidden;">
+            <button type="button" class="calc-btn calc-btn-clear" data-action="ac">AC</button>
+            <button type="button" class="calc-btn calc-btn-func" data-action="negate">+/&minus;</button>
+            <button type="button" class="calc-btn calc-btn-func" data-action="percent">%</button>
+            <button type="button" class="calc-btn calc-btn-operator" data-op="/">&divide;</button>
+
+            <button type="button" class="calc-btn calc-btn-number" data-digit="7">7</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="8">8</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="9">9</button>
+            <button type="button" class="calc-btn calc-btn-operator" data-op="*">&times;</button>
+
+            <button type="button" class="calc-btn calc-btn-number" data-digit="4">4</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="5">5</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="6">6</button>
+            <button type="button" class="calc-btn calc-btn-operator" data-op="-">&minus;</button>
+
+            <button type="button" class="calc-btn calc-btn-number" data-digit="1">1</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="2">2</button>
+            <button type="button" class="calc-btn calc-btn-number" data-digit="3">3</button>
+            <button type="button" class="calc-btn calc-btn-operator" data-op="+">+</button>
+
+            <button type="button" class="calc-btn calc-btn-number" data-digit="0" style="grid-column: span 2;">0</button>
+            <button type="button" class="calc-btn calc-btn-number" data-action="decimal">.</button>
+            <button type="button" class="calc-btn calc-btn-equals" data-action="equals">=</button>
+        </div>
+    </div>
+</div>
+
+<!-- Example chips -->
+<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:20px;">
+    <button type="button" class="calc-chip" data-insert="salary = 3600">salary = 3600</button>
+    <button type="button" class="calc-chip" data-insert="20% of total">20% of total</button>
+    <button type="button" class="calc-chip" data-insert="monthly &times; 12">monthly &times; 12</button>
+    <button type="button" class="calc-chip" data-insert="tip = 18% of amount">tip = 18% of amount</button>
+</div>
+
+<script>
+(function () {
+    var textarea = document.getElementById("expr-textarea");
+    var resultsCol = document.getElementById("expr-results");
+    var cursorLine = document.getElementById("expr-cursor-line");
+    var clearBtn = document.getElementById("expr-clear-btn");
+
+    function preprocess(line) {
+        // "18% of 240" -> "(18/100)*240"; "×" -> "*" so chip inserts and
+        // natural typing both evaluate the same way.
+        return line
+            .replace(/(\d+(?:\.\d+)?)\s*%\s+of\s+/gi, "($1/100)*")
+            .replace(/×/g, "*");
+    }
+
+    function formatCurrency(n) {
+        var sign = n < 0 ? "-" : "";
+        return sign + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function evaluateAll() {
+        var lines = textarea.value.split("\n");
+        var scope = {};
+        var html = "";
+
+        lines.forEach(function (rawLine) {
+            var line = rawLine.trim();
+
+            if (!line) {
+                html += '<div class="expr-result-line"></div>';
+                return;
+            }
+
+            if (line.charAt(0) === "#") {
+                html += '<div class="expr-result-line"></div>';
+                return;
+            }
+
+            if (/^--.*--$/.test(line)) {
+                html += '<div class="expr-result-line"></div>';
+                return;
+            }
+
+            try {
+                var result = math.evaluate(preprocess(line), scope);
+                if (typeof result === "number" && Number.isFinite(result)) {
+                    html += '<div class="expr-result-line">' + formatCurrency(result) + '</div>';
+                } else {
+                    html += '<div class="expr-result-line"></div>';
+                }
+            } catch (err) {
+                html += '<div class="expr-result-line"></div>';
+            }
+        });
+
+        resultsCol.innerHTML = html;
+
+        // Comment/label lines get their own text treatment directly in the
+        // textarea via a transparent overlay isn't feasible with a plain
+        // textarea, so just leave the raw text as typed — styling is
+        // limited to the result column for a plain <textarea>.
+
+        autoGrow();
+        updateCursorLine();
+    }
+
+    function autoGrow() {
+        textarea.style.height = "auto";
+        var lineCount = Math.max(1, textarea.value.split("\n").length);
+        textarea.style.height = (lineCount * 36) + "px";
+    }
+
+    function updateCursorLine() {
+        var pos = textarea.selectionStart || 0;
+        var before = textarea.value.substring(0, pos);
+        var lineIndex = before.split("\n").length - 1;
+        cursorLine.style.top = (lineIndex * 36) + "px";
+    }
+
+    textarea.addEventListener("input", evaluateAll);
+    textarea.addEventListener("click", updateCursorLine);
+    textarea.addEventListener("keyup", updateCursorLine);
+    textarea.addEventListener("scroll", function () {
+        resultsCol.scrollTop = textarea.scrollTop;
+    });
+
+    clearBtn.addEventListener("click", function () {
+        textarea.value = "";
+        evaluateAll();
+        textarea.focus();
+    });
+
+    document.querySelectorAll(".calc-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+            var insertText = chip.dataset.insert;
+            textarea.value = textarea.value.length && !textarea.value.endsWith("\n")
+                ? textarea.value + "\n" + insertText
+                : textarea.value + insertText;
+            evaluateAll();
+            textarea.focus();
+            textarea.scrollTop = textarea.scrollHeight;
+        });
+    });
+
+    evaluateAll();
+
+    // ---------------------------------------------------------------
+    // Button calculator
+    // ---------------------------------------------------------------
+    var calcExprLine = document.getElementById("calc-expr-line");
+    var calcResultDisplay = document.getElementById("calc-result-display");
+    var currentExpr = "";
+
+    var OP_SYMBOLS = { "/": "÷", "*": "×", "-": "−", "+": "+" };
+
+    function refreshCalcDisplay() {
+        calcExprLine.textContent = currentExpr
+            ? currentExpr.replace(/[/*\-+]/g, function (m) { return " " + OP_SYMBOLS[m] + " "; })
+            : " ";
+
+        if (!currentExpr) {
+            calcResultDisplay.textContent = "0";
+            return;
+        }
+        try {
+            var result = math.evaluate(currentExpr);
+            if (typeof result === "number" && Number.isFinite(result)) {
+                calcResultDisplay.textContent = formatCurrency(result);
+            }
+        } catch (err) {
+            // Incomplete expression (e.g. ends in an operator) — keep
+            // showing whatever was last valid rather than an error.
+        }
+    }
+
+    function appendResultLineToExpr(value) {
+        var line = "= " + value.toFixed(2);
+        textarea.value = textarea.value.length && !textarea.value.endsWith("\n")
+            ? textarea.value + "\n" + line
+            : textarea.value + line;
+        evaluateAll();
+    }
+
+    document.querySelectorAll(".calc-btn[data-digit]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            currentExpr += btn.dataset.digit;
+            refreshCalcDisplay();
+        });
+    });
+
+    document.querySelectorAll(".calc-btn[data-op]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            if (!currentExpr) return; // don't start an expression with an operator
+            currentExpr += btn.dataset.op;
+            refreshCalcDisplay();
+        });
+    });
+
+    document.querySelectorAll(".calc-btn[data-action]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var action = btn.dataset.action;
+
+            if (action === "ac") {
+                currentExpr = "";
+                refreshCalcDisplay();
+                return;
+            }
+
+            if (action === "decimal") {
+                var trailing = currentExpr.match(/(\d*\.?\d*)$/)[0];
+                if (trailing.indexOf(".") === -1) currentExpr += ".";
+                refreshCalcDisplay();
+                return;
+            }
+
+            if (action === "negate") {
+                var match = currentExpr.match(/(\d+\.?\d*)$/);
+                if (match) {
+                    var numStr = match[0];
+                    var start = currentExpr.length - numStr.length;
+                    var negated = (start > 0 && currentExpr[start - 1] === "-")
+                        ? numStr
+                        : "-" + numStr;
+                    var prefixEnd = (start > 0 && currentExpr[start - 1] === "-") ? start - 1 : start;
+                    currentExpr = currentExpr.slice(0, prefixEnd) + negated;
+                }
+                refreshCalcDisplay();
+                return;
+            }
+
+            if (action === "percent") {
+                var m = currentExpr.match(/(\d+\.?\d*)$/);
+                if (m) {
+                    var num = parseFloat(m[0]) / 100;
+                    currentExpr = currentExpr.slice(0, currentExpr.length - m[0].length) + num;
+                }
+                refreshCalcDisplay();
+                return;
+            }
+
+            if (action === "equals") {
+                if (!currentExpr) return;
+                try {
+                    var result = math.evaluate(currentExpr);
+                    if (typeof result === "number" && Number.isFinite(result)) {
+                        calcResultDisplay.textContent = formatCurrency(result);
+                        appendResultLineToExpr(result);
+                        currentExpr = String(result);
+                        calcExprLine.textContent = " ";
+                    }
+                } catch (err) {
+                    // Invalid expression (e.g. "7+") — ignore the press.
+                }
+            }
+        });
+    });
+
+    refreshCalcDisplay();
+})();
+</script>
+
+{% endblock %}

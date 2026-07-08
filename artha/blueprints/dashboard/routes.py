@@ -241,3 +241,15 @@ def calendar_page():
         recurring_due_by_date=dict(recurring_due_by_date),
         upcoming_recurring=upcoming_recurring,
     )
+
+
+# ---------------------------------------------------------------------------
+# Calculator — full page (Numi-style smart expression editor + button pad)
+# ---------------------------------------------------------------------------
+
+@dashboard_bp.route("/calculator")
+@login_required
+def calculator_page():
+    # Entirely client-side (math.js does the evaluation in the browser) —
+    # no server-side data needed.
+    return render_template("calculator.html")
