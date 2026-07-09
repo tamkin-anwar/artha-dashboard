@@ -188,20 +188,67 @@
         margin: 16px 0 24px;
     }
 
-    #note-content-textarea {
+    /* Toolbar */
+    .notes-toolbar {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+        flex-wrap: wrap;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 6px 10px;
+        margin-bottom: 16px;
+    }
+    .notes-tb-divider {
+        width: 1px;
+        height: 18px;
+        background: var(--border-subtle);
+        margin: 0 4px;
+        flex-shrink: 0;
+    }
+    .notes-tb-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        transition: all 0.1s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .notes-tb-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .notes-tb-btn.active { background: var(--gold-dim); color: var(--gold); }
+
+    /* Content editable */
+    #note-content-editable {
         display: block;
         width: 100%;
         min-height: 400px;
-        border: none;
         outline: none;
-        resize: none;
         background: transparent;
         color: var(--text-primary);
         font-family: 'Inter', sans-serif;
         font-size: 15px;
         line-height: 1.8;
     }
-    #note-content-textarea::placeholder { color: var(--text-muted); }
+    #note-content-editable:empty::before {
+        content: "Start writing...";
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+    #note-content-editable h1 { font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:var(--text-primary); margin:16px 0 8px; }
+    #note-content-editable h2 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--text-primary); margin:12px 0 6px; }
+    #note-content-editable h3 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; color:var(--text-primary); margin:8px 0 4px; }
+    #note-content-editable blockquote { border-left:3px solid var(--gold); padding-left:16px; color:var(--text-secondary); font-style:italic; margin:8px 0; }
+    #note-content-editable li { margin:4px 0; padding-left:4px; }
 
     .notes-action-bar {
         position: sticky;
@@ -290,7 +337,31 @@
             <div id="note-meta"></div>
             <div class="notes-divider"></div>
 
-            <textarea id="note-content-textarea" placeholder="Start writing..."></textarea>
+            <div class="notes-toolbar" id="notes-toolbar">
+                <button type="button" class="notes-tb-btn" data-cmd="bold" title="Bold (⌘B)"><strong>B</strong></button>
+                <button type="button" class="notes-tb-btn" data-cmd="italic" title="Italic (⌘I)"><em>I</em></button>
+                <button type="button" class="notes-tb-btn" data-cmd="underline" title="Underline (⌘U)"><span style="text-decoration:underline;">U</span></button>
+                <button type="button" class="notes-tb-btn" data-cmd="strikeThrough" title="Strikethrough (⌘⇧X)"><span style="text-decoration:line-through;">S</span></button>
+
+                <span class="notes-tb-divider"></span>
+
+                <button type="button" class="notes-tb-btn" data-heading="h1" title="Heading 1 (⌘⇧1)">H1</button>
+                <button type="button" class="notes-tb-btn" data-heading="h2" title="Heading 2 (⌘⇧2)">H2</button>
+                <button type="button" class="notes-tb-btn" data-heading="h3" title="Heading 3 (⌘⇧3)">H3</button>
+
+                <span class="notes-tb-divider"></span>
+
+                <button type="button" class="notes-tb-btn" data-prefix="- " title="Bullet list">&bull;</button>
+                <button type="button" class="notes-tb-btn" data-prefix="1. " title="Numbered list">1.</button>
+
+                <span class="notes-tb-divider"></span>
+
+                <button type="button" class="notes-tb-btn" data-prefix="&gt; " title="Quote">&quot;</button>
+                <button type="button" class="notes-tb-btn" data-divider="true" title="Divider">&mdash;</button>
+                <button type="button" class="notes-tb-btn" data-prefix="- [ ] " title="Checkbox">[ ]</button>
+            </div>
+
+            <div id="note-content-editable" contenteditable="true" aria-label="Note content"></div>
 
             <div class="notes-action-bar">
                 <span class="notes-word-count" id="notes-word-count">0 words</span>
@@ -313,7 +384,8 @@
     var emptyStateEl = document.getElementById("notes-empty-state");
     var editorEl = document.getElementById("notes-editor");
     var titleInput = document.getElementById("note-title-input");
-    var contentTextarea = document.getElementById("note-content-textarea");
+    var contentEditable = document.getElementById("note-content-editable");
+    var toolbar = document.getElementById("notes-toolbar");
     var metaEl = document.getElementById("note-meta");
     var wordCountEl = document.getElementById("notes-word-count");
     var autosaveIndicator = document.getElementById("notes-autosave-indicator");
@@ -348,7 +420,7 @@
     }
 
     function updateMeta() {
-        var words = wordCount(contentTextarea.value);
+        var words = wordCount(contentEditable.textContent);
         wordCountEl.textContent = words + (words === 1 ? " word" : " words");
 
         var minutes = Math.ceil(words / 200);
@@ -357,11 +429,58 @@
     }
 
     // -----------------------------------------------------------------
-    // Auto-grow textarea
+    // HTML <-> plain text helpers
     // -----------------------------------------------------------------
-    function autoGrowContent() {
-        contentTextarea.style.height = "auto";
-        contentTextarea.style.height = Math.max(400, contentTextarea.scrollHeight) + "px";
+    function htmlToPlainText(html) {
+        var tmp = document.createElement("div");
+        tmp.innerHTML = html || "";
+        return tmp.textContent || "";
+    }
+
+    function looksLikeHtml(s) {
+        return /<[a-z][\s\S]*>/i.test(s || "");
+    }
+
+    function escapeHtml(s) {
+        return (s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function applyInlineMarkdown(s) {
+        return escapeHtml(s)
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\*(.+?)\*/g, "<em>$1</em>");
+    }
+
+    // Old notes were saved as plain text with markdown-style syntax.
+    // New notes save real HTML (from the contenteditable's innerHTML).
+    // This only ever runs on the former — looksLikeHtml() gates it.
+    function markdownToHtml(text) {
+        var lines = (text || "").split("\n");
+        var html = lines.map(function (line) {
+            var h3 = line.match(/^### (.+)$/);
+            if (h3) return "<h3>" + applyInlineMarkdown(h3[1]) + "</h3>";
+            var h2 = line.match(/^## (.+)$/);
+            if (h2) return "<h2>" + applyInlineMarkdown(h2[1]) + "</h2>";
+            var h1 = line.match(/^# (.+)$/);
+            if (h1) return "<h1>" + applyInlineMarkdown(h1[1]) + "</h1>";
+
+            var quote = line.match(/^&gt; (.+)$|^> (.+)$/);
+            if (quote) return "<blockquote>" + applyInlineMarkdown(quote[1] || quote[2]) + "</blockquote>";
+
+            var li = line.match(/^- (.+)$/);
+            if (li) return "<li>" + applyInlineMarkdown(li[1]) + "</li>";
+
+            if (!line.trim()) return "<br>";
+            return "<div>" + applyInlineMarkdown(line) + "</div>";
+        });
+        return html.join("");
+    }
+
+    function setEditorContent(raw) {
+        contentEditable.innerHTML = looksLikeHtml(raw) ? (raw || "") : markdownToHtml(raw || "");
     }
 
     // -----------------------------------------------------------------
@@ -390,7 +509,10 @@
         var li = listEl.querySelector('.notes-list-item[data-id="' + id + '"]');
         if (!li) return;
 
-        var firstLine = (content || "").split("\n")[0].trim();
+        // content is now HTML (contenteditable innerHTML) — derive plain
+        // text for the list's title-fallback/preview/search index.
+        var plainContent = looksLikeHtml(content) ? htmlToPlainText(content) : (content || "");
+        var firstLine = plainContent.split("\n")[0].trim();
         var displayTitle = title || firstLine || "Untitled";
         var isUntitled = !title && !firstLine;
 
@@ -398,9 +520,9 @@
         titleEl.textContent = displayTitle;
         titleEl.classList.toggle("untitled", isUntitled);
 
-        li.querySelector(".notes-list-item-preview").textContent = (content || "").slice(0, 80);
+        li.querySelector(".notes-list-item-preview").textContent = plainContent.slice(0, 80);
         li.dataset.title = (title || "").toLowerCase();
-        li.dataset.preview = (content || "").toLowerCase();
+        li.dataset.preview = plainContent.toLowerCase();
     }
 
     function buildListItem(note) {
@@ -425,12 +547,11 @@
         currentCreatedAt = note.created_at;
 
         titleInput.value = note.title || "";
-        contentTextarea.value = note.content || "";
+        setEditorContent(note.content);
 
         emptyStateEl.style.display = "none";
         editorEl.classList.add("active");
 
-        autoGrowContent();
         updateMeta();
         selectListItem(note.id);
     }
@@ -463,7 +584,7 @@
         clearTimeout(saveTimer);
 
         var title = titleInput.value.trim();
-        var content = contentTextarea.value;
+        var content = contentEditable.innerHTML;
 
         showIndicator("Saving...");
 
@@ -496,8 +617,7 @@
     }
 
     titleInput.addEventListener("input", scheduleSave);
-    contentTextarea.addEventListener("input", function () {
-        autoGrowContent();
+    contentEditable.addEventListener("input", function () {
         updateMeta();
         scheduleSave();
     });
@@ -579,6 +699,135 @@
 
         listEmptyEl.style.display = anyVisible ? "none" : "block";
         listEmptyEl.textContent = anyVisible ? "No notes yet." : "No matching notes.";
+    });
+
+    // -----------------------------------------------------------------
+    // Formatting toolbar
+    // -----------------------------------------------------------------
+    function insertLinePrefix(prefix) {
+        var sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        sel.collapseToStart();
+        sel.modify("move", "backward", "lineboundary");
+        document.execCommand("insertText", false, prefix);
+    }
+
+    function runToolbarAction(btn) {
+        if (btn.dataset.cmd) {
+            document.execCommand(btn.dataset.cmd, false, null);
+        } else if (btn.dataset.heading) {
+            document.execCommand("formatBlock", false, "<" + btn.dataset.heading + ">");
+        } else if (btn.dataset.divider) {
+            document.execCommand("insertHTML", false, "<br>---<br>");
+        } else if (btn.dataset.prefix !== undefined) {
+            insertLinePrefix(btn.dataset.prefix);
+        }
+        updateMeta();
+        scheduleSave();
+        updateToolbarActiveStates();
+    }
+
+    // mousedown (not click) + preventDefault keeps the text selection
+    // alive — clicking a button would otherwise steal focus from the
+    // contenteditable and collapse whatever the user had selected.
+    toolbar.addEventListener("mousedown", function (e) {
+        var btn = e.target.closest(".notes-tb-btn");
+        if (!btn) return;
+        e.preventDefault();
+        runToolbarAction(btn);
+    });
+
+    function updateToolbarActiveStates() {
+        toolbar.querySelectorAll(".notes-tb-btn[data-cmd]").forEach(function (btn) {
+            var isActive = false;
+            try { isActive = document.queryCommandState(btn.dataset.cmd); } catch (e) {}
+            btn.classList.toggle("active", isActive);
+        });
+
+        var blockValue = "";
+        try { blockValue = (document.queryCommandValue("formatBlock") || "").toLowerCase(); } catch (e) {}
+        toolbar.querySelectorAll(".notes-tb-btn[data-heading]").forEach(function (btn) {
+            btn.classList.toggle("active", btn.dataset.heading === blockValue);
+        });
+    }
+
+    document.addEventListener("selectionchange", function () {
+        var sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        if (!contentEditable.contains(sel.anchorNode)) return;
+        updateToolbarActiveStates();
+    });
+
+    // -----------------------------------------------------------------
+    // Keyboard shortcuts
+    // -----------------------------------------------------------------
+    contentEditable.addEventListener("keydown", function (e) {
+        var mod = e.metaKey || e.ctrlKey;
+        if (!mod) return;
+        var key = e.key.toLowerCase();
+
+        if (key === "b" && !e.shiftKey) {
+            e.preventDefault();
+            document.execCommand("bold");
+        } else if (key === "i" && !e.shiftKey) {
+            e.preventDefault();
+            document.execCommand("italic");
+        } else if (key === "u" && !e.shiftKey) {
+            e.preventDefault();
+            document.execCommand("underline");
+        } else if (e.shiftKey && key === "x") {
+            e.preventDefault();
+            document.execCommand("strikeThrough");
+        } else if (e.shiftKey && e.key === "1") {
+            e.preventDefault();
+            document.execCommand("formatBlock", false, "<h1>");
+        } else if (e.shiftKey && e.key === "2") {
+            e.preventDefault();
+            document.execCommand("formatBlock", false, "<h2>");
+        } else if (e.shiftKey && e.key === "3") {
+            e.preventDefault();
+            document.execCommand("formatBlock", false, "<h3>");
+        } else {
+            return; // not one of ours — let it through untouched
+        }
+        updateMeta();
+        scheduleSave();
+        updateToolbarActiveStates();
+    });
+
+    // Cmd/Ctrl+S must work regardless of which field has focus (title or
+    // content), and must always suppress the browser's native save dialog.
+    document.addEventListener("keydown", function (e) {
+        var mod = e.metaKey || e.ctrlKey;
+        if (!mod || e.shiftKey) return;
+        if (e.key.toLowerCase() === "s") {
+            e.preventDefault();
+            saveNow();
+        }
+    });
+
+    // -----------------------------------------------------------------
+    // One-time cleanup: the server-rendered list titles/previews were
+    // computed from plain-text content. A note saved by this rich-text
+    // editor stores HTML, so if any already-HTML note was rendered on
+    // this initial page load, re-derive its title/preview from the
+    // real text instead of showing raw tags.
+    // -----------------------------------------------------------------
+    listEl.querySelectorAll(".notes-list-item").forEach(function (li) {
+        var rawPreview = li.dataset.preview || "";
+        if (!looksLikeHtml(rawPreview)) return;
+
+        var plain = htmlToPlainText(rawPreview);
+        var firstLine = plain.split("\n")[0].trim();
+        var hasTitle = li.querySelector(".notes-list-item-title") && !li.querySelector(".notes-list-item-title").classList.contains("untitled");
+
+        if (!hasTitle) {
+            var titleEl = li.querySelector(".notes-list-item-title");
+            titleEl.textContent = firstLine || "Untitled";
+            titleEl.classList.toggle("untitled", !firstLine);
+        }
+        li.querySelector(".notes-list-item-preview").textContent = plain.slice(0, 80);
+        li.dataset.preview = plain.toLowerCase();
     });
 })();
 </script>
