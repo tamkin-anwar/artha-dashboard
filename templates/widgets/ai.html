@@ -116,10 +116,11 @@
     #artha-ai-widget .ai-insights-pill:hover { background: var(--gold-dim); }
 
     #artha-ai-widget .ai-widget-input-bar {
-        background: rgba(14,17,24,0.8);
+        background: rgba(14,17,24,0.6);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-top: 1px solid var(--border-subtle);
+        border-radius: 0 0 16px 16px;
         padding: 10px 14px;
         display: flex;
         align-items: center;
@@ -191,21 +192,17 @@
     <div
         id="ai-messages"
         class="overflow-y-auto"
-        style="height:220px; margin:16px 0 0; padding:14px 16px; background:var(--bg-sidebar); display:flex; flex-direction:column; gap:10px;"
+        style="height:220px; margin:16px 0 0; padding:14px 16px; background:transparent; display:flex; flex-direction:column; gap:10px;"
         aria-live="polite"
         aria-label="AI conversation"
     >
         <div id="ai-empty-state" style="flex:1; display:flex; align-items:center; justify-content:center; text-align:center;">
-            <p style="color:var(--text-muted); font-size:13px; margin:0;">Ask me anything about your finances</p>
+            <p style="font-family:'Fraunces',serif; color:var(--text-muted); font-size:16px; margin:0;">Ask me anything about your finances</p>
         </div>
     </div>
 
-    <p style="margin:10px 20px 0; font-size:12px; color:var(--text-secondary);">
-        Powered by Claude — grounded in your real transaction data.
-    </p>
-
     <!-- Input -->
-    <div class="ai-widget-input-bar" style="margin-top:14px;">
+    <div class="ai-widget-input-bar">
         <input
             id="ai-input"
             type="text"
