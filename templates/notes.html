@@ -191,41 +191,60 @@
     /* Toolbar */
     .notes-toolbar {
         display: flex;
-        gap: 2px;
+        gap: 1px;
         align-items: center;
         flex-wrap: wrap;
         background: var(--bg-card);
         border: 1px solid var(--border-subtle);
-        border-radius: 8px;
-        padding: 6px 10px;
+        border-radius: 10px;
+        padding: 4px 8px;
         margin-bottom: 16px;
     }
     .notes-tb-divider {
         width: 1px;
         height: 18px;
         background: var(--border-subtle);
-        margin: 0 4px;
+        margin: 0 6px;
         flex-shrink: 0;
     }
     .notes-tb-btn {
-        width: 28px;
-        height: 28px;
+        position: relative;
+        width: 30px;
+        height: 30px;
         border-radius: 6px;
         background: transparent;
         border: none;
         color: var(--text-secondary);
-        font-size: 13px;
-        font-weight: 600;
         font-family: 'Inter', sans-serif;
         cursor: pointer;
-        transition: all 0.1s ease;
+        transition: all 0.12s ease;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
     }
+    .notes-tb-btn svg { width: 14px; height: 14px; }
+    .notes-tb-btn-text { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
     .notes-tb-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
     .notes-tb-btn.active { background: var(--gold-dim); color: var(--gold); }
+
+    /* Toolbar tooltips */
+    [data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-primary);
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 100;
+    }
 
     /* Content editable */
     #note-content-editable {
@@ -249,6 +268,12 @@
     #note-content-editable h3 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; color:var(--text-primary); margin:8px 0 4px; }
     #note-content-editable blockquote { border-left:3px solid var(--gold); padding-left:16px; color:var(--text-secondary); font-style:italic; margin:8px 0; }
     #note-content-editable li { margin:4px 0; padding-left:4px; }
+    #note-content-editable ol { padding-left: 24px; margin: 8px 0; }
+    #note-content-editable ol li { margin: 4px 0; padding-left: 0; color: var(--text-primary); }
+    #note-content-editable ul { padding-left: 24px; margin: 8px 0; list-style: disc; }
+    #note-content-editable ul li { margin: 4px 0; padding-left: 0; color: var(--text-primary); }
+    #note-content-editable code { font-family:'JetBrains Mono',monospace; font-size:13px; background:var(--bg-card); color:var(--gold); padding:2px 6px; border-radius:4px; }
+    #note-content-editable a { color: var(--gold); text-decoration: underline; }
 
     .notes-action-bar {
         position: sticky;
@@ -338,27 +363,32 @@
             <div class="notes-divider"></div>
 
             <div class="notes-toolbar" id="notes-toolbar">
-                <button type="button" class="notes-tb-btn" data-cmd="bold" title="Bold (⌘B)"><strong>B</strong></button>
-                <button type="button" class="notes-tb-btn" data-cmd="italic" title="Italic (⌘I)"><em>I</em></button>
-                <button type="button" class="notes-tb-btn" data-cmd="underline" title="Underline (⌘U)"><span style="text-decoration:underline;">U</span></button>
-                <button type="button" class="notes-tb-btn" data-cmd="strikeThrough" title="Strikethrough (⌘⇧X)"><span style="text-decoration:line-through;">S</span></button>
+                <button type="button" class="notes-tb-btn" data-cmd="bold" data-tooltip="Bold ⌘B" aria-label="Bold"><i data-lucide="bold"></i></button>
+                <button type="button" class="notes-tb-btn" data-cmd="italic" data-tooltip="Italic ⌘I" aria-label="Italic"><i data-lucide="italic"></i></button>
+                <button type="button" class="notes-tb-btn" data-cmd="underline" data-tooltip="Underline ⌘U" aria-label="Underline"><i data-lucide="underline"></i></button>
+                <button type="button" class="notes-tb-btn" data-cmd="strikeThrough" data-tooltip="Strikethrough ⌘⇧X" aria-label="Strikethrough"><i data-lucide="strikethrough"></i></button>
 
                 <span class="notes-tb-divider"></span>
 
-                <button type="button" class="notes-tb-btn" data-heading="h1" title="Heading 1 (⌘⇧1)">H1</button>
-                <button type="button" class="notes-tb-btn" data-heading="h2" title="Heading 2 (⌘⇧2)">H2</button>
-                <button type="button" class="notes-tb-btn" data-heading="h3" title="Heading 3 (⌘⇧3)">H3</button>
+                <button type="button" class="notes-tb-btn notes-tb-btn-text" data-heading="h1" data-tooltip="Heading 1 ⌘⇧1" aria-label="Heading 1">H1</button>
+                <button type="button" class="notes-tb-btn notes-tb-btn-text" data-heading="h2" data-tooltip="Heading 2 ⌘⇧2" aria-label="Heading 2">H2</button>
+                <button type="button" class="notes-tb-btn notes-tb-btn-text" data-heading="h3" data-tooltip="Heading 3 ⌘⇧3" aria-label="Heading 3">H3</button>
 
                 <span class="notes-tb-divider"></span>
 
-                <button type="button" class="notes-tb-btn" data-prefix="- " title="Bullet list">&bull;</button>
-                <button type="button" class="notes-tb-btn" data-prefix="1. " title="Numbered list">1.</button>
+                <button type="button" class="notes-tb-btn" data-list="unordered" data-tooltip="Bullet list" aria-label="Bullet list"><i data-lucide="list"></i></button>
+                <button type="button" class="notes-tb-btn" data-list="ordered" data-tooltip="Numbered list" aria-label="Numbered list"><i data-lucide="list-ordered"></i></button>
 
                 <span class="notes-tb-divider"></span>
 
-                <button type="button" class="notes-tb-btn" data-prefix="&gt; " title="Quote">&quot;</button>
-                <button type="button" class="notes-tb-btn" data-divider="true" title="Divider">&mdash;</button>
-                <button type="button" class="notes-tb-btn" data-prefix="- [ ] " title="Checkbox">[ ]</button>
+                <button type="button" class="notes-tb-btn" data-prefix="&gt; " data-tooltip="Blockquote" aria-label="Blockquote"><i data-lucide="quote"></i></button>
+                <button type="button" class="notes-tb-btn" data-divider="true" data-tooltip="Divider line" aria-label="Divider line"><i data-lucide="minus"></i></button>
+                <button type="button" class="notes-tb-btn" data-prefix="- [ ] " data-tooltip="Checkbox" aria-label="Checkbox"><i data-lucide="square-check"></i></button>
+
+                <span class="notes-tb-divider"></span>
+
+                <button type="button" class="notes-tb-btn" data-action="link" data-tooltip="Insert link" aria-label="Insert link"><i data-lucide="link"></i></button>
+                <button type="button" class="notes-tb-btn" data-action="code" data-tooltip="Inline code" aria-label="Inline code"><i data-lucide="code"></i></button>
             </div>
 
             <div id="note-content-editable" contenteditable="true" aria-label="Note content"></div>
@@ -744,13 +774,40 @@
         document.execCommand("insertText", false, prefix);
     }
 
+    // Native list commands give real <ol>/<ul><li> structure — the browser
+    // handles auto-incrementing, Enter-to-continue, and double-Enter-to-exit
+    // for free. This replaces the old "insert '1. ' as literal text" prefix,
+    // which never incremented past 1.
+    function insertLink() {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        var url = prompt("URL?");
+        if (!url) return;
+        if (/^\s*javascript:/i.test(url)) return;
+        document.execCommand("createLink", false, url);
+    }
+
+    function insertInlineCode() {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        document.execCommand("insertHTML", false, "<code>" + escapeHtml(sel.toString()) + "</code>");
+    }
+
     function runToolbarAction(btn) {
         if (btn.dataset.cmd) {
             document.execCommand(btn.dataset.cmd, false, null);
         } else if (btn.dataset.heading) {
             document.execCommand("formatBlock", false, "<" + btn.dataset.heading + ">");
+        } else if (btn.dataset.list === "ordered") {
+            document.execCommand("insertOrderedList");
+        } else if (btn.dataset.list === "unordered") {
+            document.execCommand("insertUnorderedList");
         } else if (btn.dataset.divider) {
             document.execCommand("insertHTML", false, "<br>---<br>");
+        } else if (btn.dataset.action === "link") {
+            insertLink();
+        } else if (btn.dataset.action === "code") {
+            insertInlineCode();
         } else if (btn.dataset.prefix !== undefined) {
             insertLinePrefix(btn.dataset.prefix);
         }
@@ -780,6 +837,13 @@
         try { blockValue = (document.queryCommandValue("formatBlock") || "").toLowerCase(); } catch (e) {}
         toolbar.querySelectorAll(".notes-tb-btn[data-heading]").forEach(function (btn) {
             btn.classList.toggle("active", btn.dataset.heading === blockValue);
+        });
+
+        toolbar.querySelectorAll(".notes-tb-btn[data-list]").forEach(function (btn) {
+            var cmd = btn.dataset.list === "ordered" ? "insertOrderedList" : "insertUnorderedList";
+            var isActive = false;
+            try { isActive = document.queryCommandState(cmd); } catch (e) {}
+            btn.classList.toggle("active", isActive);
         });
     }
 
