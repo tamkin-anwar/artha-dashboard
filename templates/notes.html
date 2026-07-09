@@ -431,10 +431,42 @@
     // -----------------------------------------------------------------
     // HTML <-> plain text helpers
     // -----------------------------------------------------------------
+    // Plain .textContent concatenates block elements with no separator
+    // at all ("this is bold textthis should become a heading"). Walk the
+    // tree and insert a newline after each block-level element instead —
+    // this both keeps "first line" splitting meaningful (data still has
+    // real \n boundaries) and reads correctly once rendered, since a
+    // normal-flow element collapses \n to a single visual space anyway.
+    var HTML_BLOCK_TAGS = { DIV: 1, P: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, LI: 1, BLOCKQUOTE: 1, BR: 1 };
+
     function htmlToPlainText(html) {
         var tmp = document.createElement("div");
         tmp.innerHTML = html || "";
-        return tmp.textContent || "";
+
+        var parts = [];
+        function walk(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                parts.push(node.textContent);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // Separator goes on BOTH sides of a block element, not just
+                // after — the first typed line in a fresh contenteditable
+                // often lands as a bare, unwrapped text node with no block
+                // tag of its own, so relying only on a trailing separator
+                // misses the boundary right after it. The \n{2,} collapse
+                // below cleans up the resulting doubled-up separators.
+                var isBlock = !!HTML_BLOCK_TAGS[node.tagName];
+                if (isBlock) parts.push("\n");
+                Array.prototype.forEach.call(node.childNodes, walk);
+                if (isBlock) parts.push("\n");
+            }
+        }
+        Array.prototype.forEach.call(tmp.childNodes, walk);
+
+        return parts.join("")
+            .replace(/[ \t]+/g, " ")
+            .replace(/[ \t]*\n[ \t]*/g, "\n")
+            .replace(/\n{2,}/g, "\n")
+            .trim();
     }
 
     function looksLikeHtml(s) {
