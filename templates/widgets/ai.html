@@ -54,8 +54,8 @@
        or as the mini thinking/speaking loading indicator. Scoped down
        from the full page's 120px version to fit this compact widget. */
     #artha-ai-widget .ai-orb {
-        width: 56px;
-        height: 56px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         background: radial-gradient(circle at 30% 30%,
             rgba(212, 168, 67, 0.6),
@@ -159,11 +159,11 @@
 
 <div
     class="glass-card"
-    style="padding:0; overflow:hidden; border-left:2px solid var(--gold); display:flex; flex-direction:column;"
+    style="padding:24px; overflow:hidden; border-left:2px solid var(--gold); display:flex; flex-direction:column; height:100%;"
     id="artha-ai-widget"
     data-csrf="{{ csrf_token() }}"
 >
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:20px 20px 0;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
         <span class="eyebrow">AI Insight</span>
 
         <div class="flex items-center space-x-2">
@@ -192,17 +192,18 @@
     <div
         id="ai-messages"
         class="overflow-y-auto"
-        style="height:220px; margin:16px 0 0; padding:14px 16px; background:transparent; display:flex; flex-direction:column; gap:10px;"
+        style="flex:1; min-height:220px; margin:16px 0 0; padding:0; background:transparent; display:flex; flex-direction:column; gap:10px;"
         aria-live="polite"
         aria-label="AI conversation"
     >
-        <div id="ai-empty-state" style="flex:1; display:flex; align-items:center; justify-content:center; text-align:center;">
-            <p style="font-family:'Fraunces',serif; color:var(--text-muted); font-size:16px; margin:0;">Ask me anything about your finances</p>
+        <div id="ai-empty-state" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center;">
+            <div class="ai-orb" aria-hidden="true"></div>
+            <p style="font-family:'Fraunces',serif; color:var(--text-secondary); font-size:13px; margin:0;">Ask me anything</p>
         </div>
     </div>
 
     <!-- Input -->
-    <div class="ai-widget-input-bar">
+    <div class="ai-widget-input-bar" style="margin:16px -24px -24px -24px;">
         <input
             id="ai-input"
             type="text"

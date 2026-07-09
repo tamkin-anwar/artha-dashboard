@@ -58,7 +58,7 @@
 {% else %}
 
     <!-- Greeting -->
-    <div style="margin-bottom:32px;">
+    <div style="margin-bottom:16px;">
         <div class="eyebrow" style="margin-bottom:8px;">DASHBOARD</div>
         <h1 style="font-family:'Fraunces',serif; font-size:36px; font-weight:300; color:var(--text-primary); margin:0 0 6px;">
             Welcome back, {{ current_user.first_name or current_user.username }}.
@@ -67,7 +67,7 @@
     </div>
 
     <!-- 4 Stat Cards -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:24px;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:16px;">
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
                 <span style="width:8px; height:8px; border-radius:50%; background:var(--emerald); display:inline-block;"></span>
@@ -99,17 +99,17 @@
     </div>
 
     <!-- Chart + AI -->
-    <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:16px; margin-bottom:24px;" class="dashboard-row">
-        <div>
+    <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:16px; margin-bottom:16px; align-items:stretch;" class="dashboard-row">
+        <div style="height:100%;">
             {% include "widgets/chart.html" %}
         </div>
-        <div id="widget-ai">
+        <div id="widget-ai" style="height:100%;">
             {% include "widgets/ai.html" %}
         </div>
     </div>
 
     <!-- Scenarios + Notes -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;" class="dashboard-row">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;" class="dashboard-row">
         <div>
             {% include "widgets/scenarios.html" %}
         </div>
