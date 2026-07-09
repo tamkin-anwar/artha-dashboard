@@ -778,6 +778,42 @@
     // handles auto-incrementing, Enter-to-continue, and double-Enter-to-exit
     // for free. This replaces the old "insert '1. ' as literal text" prefix,
     // which never incremented past 1.
+    //
+    // execCommand can fail silently (returns false, or true on some browsers
+    // even when nothing happened) if the editor doesn't have focus or the
+    // selection isn't inside it, so we force focus first and fall back to
+    // manually building the <ol>/<ul><li> structure if the command didn't
+    // actually produce a list.
+    function insertListFallback(ordered) {
+        var sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+        var range = sel.getRangeAt(0);
+        var list = document.createElement(ordered ? "ol" : "ul");
+        var li = document.createElement("li");
+        li.innerHTML = "<br>";
+        list.appendChild(li);
+        range.deleteContents();
+        range.insertNode(list);
+        var newRange = document.createRange();
+        newRange.setStart(li, 0);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+    }
+
+    function insertList(ordered) {
+        contentEditable.focus();
+        var cmd = ordered ? "insertOrderedList" : "insertUnorderedList";
+        var succeeded = false;
+        try { succeeded = document.execCommand(cmd, false, null) === true; } catch (e) { succeeded = false; }
+        if (!succeeded) {
+            try { succeeded = document.queryCommandState(cmd); } catch (e) {}
+        }
+        if (!succeeded) {
+            insertListFallback(ordered);
+        }
+    }
+
     function insertLink() {
         var sel = window.getSelection();
         if (!sel || sel.isCollapsed) return;
@@ -799,9 +835,9 @@
         } else if (btn.dataset.heading) {
             document.execCommand("formatBlock", false, "<" + btn.dataset.heading + ">");
         } else if (btn.dataset.list === "ordered") {
-            document.execCommand("insertOrderedList");
+            insertList(true);
         } else if (btn.dataset.list === "unordered") {
-            document.execCommand("insertUnorderedList");
+            insertList(false);
         } else if (btn.dataset.divider) {
             document.execCommand("insertHTML", false, "<br>---<br>");
         } else if (btn.dataset.action === "link") {
