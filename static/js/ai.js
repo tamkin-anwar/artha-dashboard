@@ -46,10 +46,14 @@ function initAI() {
 
     function formatText(raw) {
         // Minimal safe rendering: escape HTML, then apply basic markdown.
+        // Heading strip runs after escaping (so the <strong> tags it
+        // inserts don't themselves get escaped) but before the other
+        // markdown replacements.
         return raw
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
+            .replace(/^#{1,3}\s+(.+)$/gm, "<strong>$1</strong>")
             .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
             .replace(/\*(.*?)\*/g, "<em>$1</em>")
             .replace(/\n/g, "<br>");
