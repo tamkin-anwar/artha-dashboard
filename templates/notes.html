@@ -16,138 +16,569 @@
 {% endwith %}
 
 <style>
-    #note-content-input {
-        resize: none;
+    .notes-app {
+        display: flex;
+        margin: -32px;
+        height: calc(100vh - 65px);
         overflow: hidden;
     }
-    .note-card {
+
+    /* Left panel */
+    .notes-left-panel {
+        width: 300px;
+        flex-shrink: 0;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-subtle);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .notes-left-header {
+        padding: 20px 16px 0;
+        flex-shrink: 0;
+    }
+    .notes-search-wrap {
+        position: relative;
+        margin-bottom: 8px;
+    }
+    .notes-search-wrap svg {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+    #notes-search {
+        width: 100%;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 8px 12px 8px 32px;
+        font-size: 13px;
+        color: var(--text-primary);
+        outline: none;
+    }
+    #notes-search::placeholder { color: var(--text-muted); }
+
+    .notes-new-btn {
+        background: var(--gold);
+        color: #000;
+        font-weight: 600;
+        font-size: 13px;
+        border: none;
+        border-radius: 8px;
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0 16px;
+        cursor: pointer;
+        transition: filter 0.12s ease;
+    }
+    .notes-new-btn:hover { filter: brightness(1.08); }
+
+    .notes-list {
+        flex: 1;
+        overflow-y: auto;
+        list-style: none;
+        margin: 0;
+        padding: 0 0 16px;
+    }
+    .notes-list-item {
+        padding: 12px 16px;
+        margin: 4px 8px;
+        border-radius: 8px;
+        border-left: 2px solid transparent;
+        cursor: pointer;
+        transition: background 0.12s ease;
+    }
+    .notes-list-item:hover { background: var(--bg-hover); }
+    .notes-list-item.selected {
+        background: var(--bg-hover);
+        border-left: 2px solid var(--gold);
+    }
+    .notes-list-item-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .notes-list-item-title.untitled { color: var(--text-muted); font-weight: 500; }
+    .notes-list-item-preview {
+        font-size: 12px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+    }
+    .notes-list-item-date {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+    .notes-list-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+    /* Right panel */
+    .notes-right-panel {
+        flex: 1;
+        min-width: 0;
+        background: var(--bg-page);
+        overflow-y: auto;
         position: relative;
     }
-    .note-delete-btn {
+    .notes-empty-state {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        color: var(--text-muted);
+        text-align: center;
+    }
+    .notes-editor {
+        display: none;
+        padding: 48px 64px 96px;
+        max-width: 800px;
+    }
+    .notes-editor.active { display: block; }
+
+    .notes-autosave-indicator {
         position: absolute;
-        top: 12px;
-        right: 12px;
+        top: 16px;
+        right: 24px;
+        font-size: 11px;
+        color: var(--gold);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+    .notes-autosave-indicator.visible { opacity: 1; }
+
+    #note-title-input {
+        display: block;
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text-primary);
+        font-family: 'Fraunces', serif;
+        font-size: 28px;
+        font-weight: 500;
+    }
+    #note-title-input::placeholder { color: var(--text-muted); }
+
+    #note-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+    }
+
+    .notes-divider {
+        height: 1px;
+        background: var(--gold);
+        opacity: 0.3;
+        margin: 16px 0 24px;
+    }
+
+    #note-content-textarea {
+        display: block;
+        width: 100%;
+        min-height: 400px;
+        border: none;
+        outline: none;
+        resize: none;
+        background: transparent;
+        color: var(--text-primary);
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        line-height: 1.8;
+    }
+    #note-content-textarea::placeholder { color: var(--text-muted); }
+
+    .notes-action-bar {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-page);
+        border-top: 1px solid var(--border-subtle);
+        padding: 12px 64px;
+        margin: 0 -64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .notes-word-count {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+    .notes-action-btn-save {
+        background: var(--gold);
+        color: #000;
+        font-weight: 600;
+        font-size: 13px;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 16px;
+        cursor: pointer;
+    }
+    .notes-action-btn-delete {
         background: none;
         border: none;
-        color: var(--text-muted);
+        color: var(--red);
+        font-size: 13px;
         cursor: pointer;
-        font-size: 15px;
-        line-height: 1;
-        padding: 4px;
-        border-radius: 6px;
-        transition: color 0.12s ease, background 0.12s ease;
+        padding: 7px 10px;
     }
-    .note-delete-btn:hover { color: var(--red); background: var(--red-dim); }
 </style>
 
-<div class="eyebrow" style="margin-bottom:8px;">NOTES</div>
-<h1 style="font-family:'Fraunces',serif; font-size:32px; font-weight:300; color:var(--text-primary); margin:0 0 24px;">Thinking, captured</h1>
+<div class="notes-app">
+    <!-- LEFT: note list panel -->
+    <div class="notes-left-panel">
+        <div class="notes-left-header">
+            <div class="eyebrow" style="margin-bottom:12px;">Notes</div>
+            <div class="notes-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="notes-search" placeholder="Search notes..." autocomplete="off">
+            </div>
+            <button type="button" id="new-note-btn" class="notes-new-btn">+ New Note</button>
+        </div>
 
-<!-- Add note form -->
-<div class="glass-card" style="padding:20px; margin-bottom:24px;">
-    <form method="POST" action="{{ url_for('notes.notes_page') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <input
-            type="text"
-            name="title"
-            placeholder="Title (optional)"
-            class="field-input w-full"
-            style="margin-bottom:10px; font-weight:600;"
-        >
-
-        <textarea
-            id="note-content-input"
-            name="content"
-            rows="1"
-            placeholder="Write a note..."
-            class="field-input w-full"
-            required
-            style="margin-bottom:12px;"
-        ></textarea>
-
-        <button type="submit" class="btn-primary" style="padding:10px 22px; font-size:14px;">
-            Add Note
-        </button>
-    </form>
-</div>
-
-{% if notes %}
-    <ul class="notes-masonry" style="list-style:none; padding:0; margin:0;">
-        {% for note in notes %}
-            <li class="note-row">
-                <div class="glass-card note-card" style="padding:20px;" data-id="{{ note.id }}">
-                    <button type="button" class="note-delete-btn" data-id="{{ note.id }}" title="Delete" aria-label="Delete note">
-                        &#128465;
-                    </button>
-
-                    {% if note.title %}
-                        <div style="font-weight:700; color:var(--text-primary); font-size:16px; margin:0 28px 8px 0; word-break:break-word;">{{ note.title }}</div>
-                    {% endif %}
-
-                    <p style="color:var(--text-secondary); font-size:14px; line-height:1.5; margin:0 0 20px; word-break:break-word;">{{ note.content|truncate(120) }}</p>
-
-                    <div style="text-align:right; font-size:11px; color:var(--text-muted);">
-                        {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
-                    </div>
-                </div>
-            </li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <div style="text-align:center; padding:80px 20px; color:var(--text-muted);">
-        <div style="font-size:36px; margin-bottom:14px;" aria-hidden="true">&#128221;</div>
-        <div style="font-size:14px;">No notes yet. Capture your first thought.</div>
+        <ul class="notes-list" id="notes-list">
+            {% for note in notes %}
+                {% set display_title = note.title if note.title else (note.content.split('\n')[0]|truncate(40, True) if note.content else '') %}
+                <li class="notes-list-item"
+                    data-id="{{ note.id }}"
+                    data-title="{{ (note.title or '')|lower }}"
+                    data-preview="{{ (note.content or '')|lower }}"
+                >
+                    <div class="notes-list-item-title {{ 'untitled' if not display_title }}">{{ display_title if display_title else 'Untitled' }}</div>
+                    <div class="notes-list-item-preview">{{ note.content|truncate(50) if note.content else '' }}</div>
+                    <div class="notes-list-item-date">{{ note.created_at.strftime('%b %d') if note.created_at else '' }}</div>
+                </li>
+            {% endfor %}
+        </ul>
+        <div class="notes-list-empty" id="notes-list-empty" style="display:{{ 'block' if not notes else 'none' }};">
+            No notes yet.
+        </div>
     </div>
-{% endif %}
+
+    <!-- RIGHT: editor panel -->
+    <div class="notes-right-panel">
+        <div class="notes-empty-state" id="notes-empty-state">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            </svg>
+            <div style="font-size:14px;">Select a note or create a new one</div>
+        </div>
+
+        <div class="notes-editor" id="notes-editor">
+            <div class="notes-autosave-indicator" id="notes-autosave-indicator"></div>
+
+            <input type="text" id="note-title-input" placeholder="Untitled" autocomplete="off">
+            <div id="note-meta"></div>
+            <div class="notes-divider"></div>
+
+            <textarea id="note-content-textarea" placeholder="Start writing..."></textarea>
+
+            <div class="notes-action-bar">
+                <span class="notes-word-count" id="notes-word-count">0 words</span>
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <button type="button" class="notes-action-btn-save" id="notes-save-btn">Save</button>
+                    <button type="button" class="notes-action-btn-delete" id="notes-delete-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 (function () {
-    var textarea = document.getElementById("note-content-input");
+    var listEl = document.getElementById("notes-list");
+    var listEmptyEl = document.getElementById("notes-list-empty");
+    var searchInput = document.getElementById("notes-search");
+    var newNoteBtn = document.getElementById("new-note-btn");
 
-    function autoGrow() {
-        textarea.style.height = "auto";
-        textarea.style.height = textarea.scrollHeight + "px";
-    }
-    textarea.addEventListener("input", autoGrow);
-    autoGrow();
+    var emptyStateEl = document.getElementById("notes-empty-state");
+    var editorEl = document.getElementById("notes-editor");
+    var titleInput = document.getElementById("note-title-input");
+    var contentTextarea = document.getElementById("note-content-textarea");
+    var metaEl = document.getElementById("note-meta");
+    var wordCountEl = document.getElementById("notes-word-count");
+    var autosaveIndicator = document.getElementById("notes-autosave-indicator");
+    var saveBtn = document.getElementById("notes-save-btn");
+    var deleteBtn = document.getElementById("notes-delete-btn");
+
+    var currentNoteId = null;
+    var currentCreatedAt = null;
+    var saveTimer = null;
 
     function getCsrfToken() {
         var meta = document.querySelector('meta[name="csrf-token"]');
         return meta ? meta.getAttribute("content") : "";
     }
 
-    document.querySelectorAll(".note-delete-btn").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            var id = btn.dataset.id;
-            var card = btn.closest(".note-row");
+    function csrfHeaders() {
+        var token = getCsrfToken();
+        return {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": token,
+            "X-CSRF-Token": token,
+        };
+    }
 
-            fetch("/delete_note/" + id, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRFToken": getCsrfToken(),
-                    "X-CSRF-Token": getCsrfToken(),
-                },
-            })
-                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-                .then(function (result) {
-                    if (!result.ok) {
-                        console.warn("Delete failed:", result.data && result.data.message);
-                        return;
-                    }
-                    if (card) card.remove();
+    // -----------------------------------------------------------------
+    // Word count / reading time
+    // -----------------------------------------------------------------
+    function wordCount(text) {
+        var trimmed = (text || "").trim();
+        if (!trimmed) return 0;
+        return trimmed.split(/\s+/).length;
+    }
 
-                    var list = document.querySelector(".notes-masonry");
-                    if (list && !list.querySelector(".note-row")) {
-                        window.location.reload();
-                    }
-                })
-                .catch(function (err) {
-                    console.error("Network error deleting note:", err);
-                });
+    function updateMeta() {
+        var words = wordCount(contentTextarea.value);
+        wordCountEl.textContent = words + (words === 1 ? " word" : " words");
+
+        var minutes = Math.ceil(words / 200);
+        var readTime = words === 0 ? "0 min read" : (minutes <= 1 ? "1 min read" : minutes + " min read");
+        metaEl.textContent = (currentCreatedAt ? currentCreatedAt + " · " : "") + readTime;
+    }
+
+    // -----------------------------------------------------------------
+    // Auto-grow textarea
+    // -----------------------------------------------------------------
+    function autoGrowContent() {
+        contentTextarea.style.height = "auto";
+        contentTextarea.style.height = Math.max(400, contentTextarea.scrollHeight) + "px";
+    }
+
+    // -----------------------------------------------------------------
+    // Auto-save indicator
+    // -----------------------------------------------------------------
+    function showIndicator(text) {
+        autosaveIndicator.textContent = text;
+        autosaveIndicator.classList.add("visible");
+    }
+    function hideIndicatorSoon() {
+        setTimeout(function () {
+            autosaveIndicator.classList.remove("visible");
+        }, 1500);
+    }
+
+    // -----------------------------------------------------------------
+    // List item helpers
+    // -----------------------------------------------------------------
+    function selectListItem(id) {
+        listEl.querySelectorAll(".notes-list-item").forEach(function (li) {
+            li.classList.toggle("selected", li.dataset.id === String(id));
         });
+    }
+
+    function updateListItemDisplay(id, title, content) {
+        var li = listEl.querySelector('.notes-list-item[data-id="' + id + '"]');
+        if (!li) return;
+
+        var firstLine = (content || "").split("\n")[0].trim();
+        var displayTitle = title || firstLine || "Untitled";
+        var isUntitled = !title && !firstLine;
+
+        var titleEl = li.querySelector(".notes-list-item-title");
+        titleEl.textContent = displayTitle;
+        titleEl.classList.toggle("untitled", isUntitled);
+
+        li.querySelector(".notes-list-item-preview").textContent = (content || "").slice(0, 80);
+        li.dataset.title = (title || "").toLowerCase();
+        li.dataset.preview = (content || "").toLowerCase();
+    }
+
+    function buildListItem(note) {
+        var li = document.createElement("li");
+        li.className = "notes-list-item";
+        li.dataset.id = note.id;
+        li.dataset.title = (note.title || "").toLowerCase();
+        li.dataset.preview = (note.content || "").toLowerCase();
+        li.innerHTML =
+            '<div class="notes-list-item-title untitled">Untitled</div>' +
+            '<div class="notes-list-item-preview"></div>' +
+            '<div class="notes-list-item-date">' + (note.created_at || "") + "</div>";
+        attachListItemListener(li);
+        return li;
+    }
+
+    // -----------------------------------------------------------------
+    // Opening / loading a note into the editor
+    // -----------------------------------------------------------------
+    function openNoteInEditor(note) {
+        currentNoteId = note.id;
+        currentCreatedAt = note.created_at;
+
+        titleInput.value = note.title || "";
+        contentTextarea.value = note.content || "";
+
+        emptyStateEl.style.display = "none";
+        editorEl.classList.add("active");
+
+        autoGrowContent();
+        updateMeta();
+        selectListItem(note.id);
+    }
+
+    function loadNote(id) {
+        fetch("/notes/" + id, { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (!data || data.message) return;
+                openNoteInEditor(data);
+            })
+            .catch(function (err) {
+                console.error("Error loading note:", err);
+            });
+    }
+
+    function attachListItemListener(li) {
+        li.addEventListener("click", function () {
+            loadNote(li.dataset.id);
+        });
+    }
+
+    listEl.querySelectorAll(".notes-list-item").forEach(attachListItemListener);
+
+    // -----------------------------------------------------------------
+    // Auto-save
+    // -----------------------------------------------------------------
+    function saveNow() {
+        if (!currentNoteId) return;
+        clearTimeout(saveTimer);
+
+        var title = titleInput.value.trim();
+        var content = contentTextarea.value;
+
+        showIndicator("Saving...");
+
+        fetch("/notes/" + currentNoteId + "/update", {
+            method: "PATCH",
+            credentials: "same-origin",
+            headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
+            body: JSON.stringify({ title: title, content: content }),
+        })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+                if (!result.ok) {
+                    showIndicator("Could not save");
+                    hideIndicatorSoon();
+                    return;
+                }
+                updateListItemDisplay(currentNoteId, result.data.title, result.data.content);
+                showIndicator("Saved ✓");
+                hideIndicatorSoon();
+            })
+            .catch(function () {
+                showIndicator("Could not save");
+                hideIndicatorSoon();
+            });
+    }
+
+    function scheduleSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveNow, 2000);
+    }
+
+    titleInput.addEventListener("input", scheduleSave);
+    contentTextarea.addEventListener("input", function () {
+        autoGrowContent();
+        updateMeta();
+        scheduleSave();
+    });
+
+    saveBtn.addEventListener("click", saveNow);
+
+    // -----------------------------------------------------------------
+    // New note (quick capture)
+    // -----------------------------------------------------------------
+    newNoteBtn.addEventListener("click", function () {
+        fetch("/notes/new", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+        })
+            .then(function (res) { return res.json(); })
+            .then(function (note) {
+                if (!note || note.message) return;
+
+                listEmptyEl.style.display = "none";
+                var li = buildListItem(note);
+                listEl.insertBefore(li, listEl.firstChild);
+
+                openNoteInEditor(note);
+                titleInput.focus();
+            })
+            .catch(function (err) {
+                console.error("Error creating note:", err);
+            });
+    });
+
+    // -----------------------------------------------------------------
+    // Delete
+    // -----------------------------------------------------------------
+    deleteBtn.addEventListener("click", function () {
+        if (!currentNoteId) return;
+        var idToDelete = currentNoteId;
+
+        fetch("/delete_note/" + idToDelete, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+        })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+                if (!result.ok) {
+                    console.warn("Delete failed:", result.data && result.data.message);
+                    return;
+                }
+
+                var li = listEl.querySelector('.notes-list-item[data-id="' + idToDelete + '"]');
+                if (li) li.remove();
+
+                if (!listEl.querySelector(".notes-list-item")) {
+                    listEmptyEl.style.display = "block";
+                }
+
+                currentNoteId = null;
+                editorEl.classList.remove("active");
+                emptyStateEl.style.display = "flex";
+            })
+            .catch(function (err) {
+                console.error("Network error deleting note:", err);
+            });
+    });
+
+    // -----------------------------------------------------------------
+    // Search (client-side, real time)
+    // -----------------------------------------------------------------
+    searchInput.addEventListener("input", function () {
+        var q = searchInput.value.trim().toLowerCase();
+        var anyVisible = false;
+
+        listEl.querySelectorAll(".notes-list-item").forEach(function (li) {
+            var matches = !q || li.dataset.title.indexOf(q) !== -1 || li.dataset.preview.indexOf(q) !== -1;
+            li.style.display = matches ? "" : "none";
+            if (matches) anyVisible = true;
+        });
+
+        listEmptyEl.style.display = anyVisible ? "none" : "block";
+        listEmptyEl.textContent = anyVisible ? "No notes yet." : "No matching notes.";
     });
 })();
 </script>

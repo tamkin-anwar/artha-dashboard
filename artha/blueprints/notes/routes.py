@@ -56,6 +56,87 @@ def notes_page():
     return render_template("notes.html", notes=notes)
 
 
+@notes_bp.route("/notes/new", methods=["POST"])
+@login_required
+def new_note():
+    max_pos = (
+        db.session.query(func.max(Note.position))
+        .filter_by(user_id=current_user.id)
+        .scalar()
+        or 0
+    )
+    note = Note(
+        title=None,
+        content="",
+        user_id=current_user.id,
+        position=int(max_pos) + 1,
+    )
+    try:
+        db.session.add(note)
+        db.session.commit()
+        return jsonify({
+            "id": note.id,
+            "title": note.title,
+            "content": note.content,
+            "created_at": note.created_at.strftime("%b %d, %Y") if note.created_at else None,
+        })
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error creating note: %s", e, exc_info=True)
+        return jsonify({"message": "Error creating note"}), 500
+
+
+@notes_bp.route("/notes/<int:note_id>", methods=["GET"])
+@login_required
+def get_note(note_id):
+    note = db.session.get(Note, note_id)
+    if note is None:
+        return jsonify({"message": "Not found"}), 404
+    if note.user_id != current_user.id:
+        return jsonify({"message": "Unauthorized"}), 403
+
+    return jsonify({
+        "id": note.id,
+        "title": note.title,
+        "content": note.content,
+        "created_at": note.created_at.strftime("%b %d, %Y") if note.created_at else None,
+    })
+
+
+@notes_bp.route("/notes/<int:note_id>/update", methods=["PATCH"])
+@login_required
+def update_note_fields(note_id):
+    note = db.session.get(Note, note_id)
+    if note is None:
+        return jsonify({"message": "Not found"}), 404
+    if note.user_id != current_user.id:
+        return jsonify({"message": "Unauthorized"}), 403
+
+    data = request.get_json(silent=True) or {}
+
+    # Auto-save is lenient by design — a blank title/content mid-edit is
+    # not an error (unlike the older /update_note/<id> AJAX route, which
+    # is a deliberate final-submit action that requires content).
+    if "title" in data:
+        title = (data.get("title") or "").strip()
+        note.title = title or None
+    if "content" in data:
+        note.content = (data.get("content") or "").strip()
+
+    try:
+        db.session.commit()
+        return jsonify({
+            "message": "Note updated",
+            "id": note.id,
+            "title": note.title,
+            "content": note.content,
+        })
+    except Exception as e:
+        db.session.rollback()
+        log.error("Error auto-saving note: %s", e, exc_info=True)
+        return jsonify({"message": "Database error"}), 500
+
+
 @notes_bp.route("/update_note/<int:note_id>", methods=["POST"])
 @login_required
 def update_note(note_id):
