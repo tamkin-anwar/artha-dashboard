@@ -69,8 +69,14 @@
         filter: blur(0.5px);
     }
     @keyframes ai-widget-orb-breathe {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.08); }
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 20px rgba(212,168,67,0.2), 0 0 40px rgba(30,58,95,0.3);
+        }
+        50% {
+            transform: scale(1.08);
+            box-shadow: 0 0 30px rgba(212,168,67,0.35), 0 0 60px rgba(30,58,95,0.4);
+        }
     }
     #artha-ai-widget .ai-orb.thinking {
         animation: ai-widget-orb-think 1.2s ease-in-out infinite;
