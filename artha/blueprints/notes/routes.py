@@ -7,7 +7,7 @@ from sqlalchemy import func
 
 from ...extensions import db
 from ...models import Note
-from ...utils import is_ajax_request
+from ...utils import is_ajax_request, derive_title_and_preview
 from . import notes_bp
 
 log = logging.getLogger(__name__)
@@ -30,9 +30,11 @@ def notes_page():
             .scalar()
             or 0
         )
+        derived_title, preview = derive_title_and_preview(content)
         new_note = Note(
-            title=title or None,
+            title=title or derived_title,
             content=content,
+            preview=preview,
             user_id=current_user.id,
             position=int(max_pos) + 1,
         )
@@ -65,9 +67,11 @@ def new_note():
         .scalar()
         or 0
     )
+    derived_title, preview = derive_title_and_preview("")
     note = Note(
-        title=None,
+        title=derived_title,
         content="",
+        preview=preview,
         user_id=current_user.id,
         position=int(max_pos) + 1,
     )
@@ -78,6 +82,7 @@ def new_note():
             "id": note.id,
             "title": note.title,
             "content": note.content,
+            "preview": note.preview,
             "created_at": note.created_at.strftime("%b %d, %Y") if note.created_at else None,
         })
     except Exception as e:
@@ -99,6 +104,7 @@ def get_note(note_id):
         "id": note.id,
         "title": note.title,
         "content": note.content,
+        "preview": note.preview,
         "created_at": note.created_at.strftime("%b %d, %Y") if note.created_at else None,
     })
 
@@ -117,11 +123,24 @@ def update_note_fields(note_id):
     # Auto-save is lenient by design — a blank title/content mid-edit is
     # not an error (unlike the older /update_note/<id> AJAX route, which
     # is a deliberate final-submit action that requires content).
+    changed = False
+    explicit_title = None
     if "title" in data:
-        title = (data.get("title") or "").strip()
-        note.title = title or None
+        explicit_title = (data.get("title") or "").strip()
+        changed = True
     if "content" in data:
         note.content = (data.get("content") or "").strip()
+        changed = True
+
+    # title/preview are derived once, here, from whatever content ends up
+    # stored — never re-derived client-side. An explicit (non-blank) title
+    # always wins; a blank title falls back to the auto-derived one, so
+    # clearing the title field reverts to "first line of content" like
+    # before, instead of leaving a stale title behind.
+    if changed:
+        derived_title, preview = derive_title_and_preview(note.content)
+        note.title = explicit_title or derived_title
+        note.preview = preview
 
     try:
         db.session.commit()
@@ -130,6 +149,7 @@ def update_note_fields(note_id):
             "id": note.id,
             "title": note.title,
             "content": note.content,
+            "preview": note.preview,
         })
     except Exception as e:
         db.session.rollback()

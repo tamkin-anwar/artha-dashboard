@@ -329,14 +329,13 @@
 
         <ul class="notes-list" id="notes-list">
             {% for note in notes %}
-                {% set display_title = note.title if note.title else (note.content.split('\n')[0]|truncate(40, True) if note.content else '') %}
                 <li class="notes-list-item"
                     data-id="{{ note.id }}"
                     data-title="{{ (note.title or '')|lower }}"
-                    data-preview="{{ (note.content or '')|lower }}"
+                    data-preview="{{ (note.preview or '')|lower }}"
                 >
-                    <div class="notes-list-item-title {{ 'untitled' if not display_title }}">{{ display_title if display_title else 'Untitled' }}</div>
-                    <div class="notes-list-item-preview">{{ note.content|truncate(50) if note.content else '' }}</div>
+                    <div class="notes-list-item-title {{ 'untitled' if not note.title }}">{{ note.title or 'Untitled' }}</div>
+                    <div class="notes-list-item-preview">{{ note.preview or '' }}</div>
                     <div class="notes-list-item-date">{{ note.created_at.strftime('%b %d') if note.created_at else '' }}</div>
                 </li>
             {% endfor %}
@@ -461,44 +460,11 @@
     // -----------------------------------------------------------------
     // HTML <-> plain text helpers
     // -----------------------------------------------------------------
-    // Plain .textContent concatenates block elements with no separator
-    // at all ("this is bold textthis should become a heading"). Walk the
-    // tree and insert a newline after each block-level element instead —
-    // this both keeps "first line" splitting meaningful (data still has
-    // real \n boundaries) and reads correctly once rendered, since a
-    // normal-flow element collapses \n to a single visual space anyway.
-    var HTML_BLOCK_TAGS = { DIV: 1, P: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, LI: 1, BLOCKQUOTE: 1, BR: 1 };
-
-    function htmlToPlainText(html) {
-        var tmp = document.createElement("div");
-        tmp.innerHTML = html || "";
-
-        var parts = [];
-        function walk(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                parts.push(node.textContent);
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                // Separator goes on BOTH sides of a block element, not just
-                // after — the first typed line in a fresh contenteditable
-                // often lands as a bare, unwrapped text node with no block
-                // tag of its own, so relying only on a trailing separator
-                // misses the boundary right after it. The \n{2,} collapse
-                // below cleans up the resulting doubled-up separators.
-                var isBlock = !!HTML_BLOCK_TAGS[node.tagName];
-                if (isBlock) parts.push("\n");
-                Array.prototype.forEach.call(node.childNodes, walk);
-                if (isBlock) parts.push("\n");
-            }
-        }
-        Array.prototype.forEach.call(tmp.childNodes, walk);
-
-        return parts.join("")
-            .replace(/[ \t]+/g, " ")
-            .replace(/[ \t]*\n[ \t]*/g, "\n")
-            .replace(/\n{2,}/g, "\n")
-            .trim();
-    }
-
+    // Title/preview text for the list is derived server-side once, at
+    // save time (see artha.utils.derive_title_and_preview) — the editor
+    // only needs looksLikeHtml() here, to decide whether a loaded note's
+    // content is real HTML (new editor) or legacy markdown-ish plain text
+    // that still needs markdownToHtml() below.
     function looksLikeHtml(s) {
         return /<[a-z][\s\S]*>/i.test(s || "");
     }
@@ -567,36 +533,34 @@
         });
     }
 
-    function updateListItemDisplay(id, title, content) {
+    // title/preview are always server-confirmed values by this point (the
+    // /notes/new and /notes/<id>/update responses both include them,
+    // already derived from content) — just render them, no re-deriving.
+    function renderListItemContent(li, title, preview) {
+        var titleEl = li.querySelector(".notes-list-item-title");
+        titleEl.textContent = title || "Untitled";
+        titleEl.classList.toggle("untitled", !title);
+
+        li.querySelector(".notes-list-item-preview").textContent = preview || "";
+        li.dataset.title = (title || "").toLowerCase();
+        li.dataset.preview = (preview || "").toLowerCase();
+    }
+
+    function updateListItemDisplay(id, title, preview) {
         var li = listEl.querySelector('.notes-list-item[data-id="' + id + '"]');
         if (!li) return;
-
-        // content is now HTML (contenteditable innerHTML) — derive plain
-        // text for the list's title-fallback/preview/search index.
-        var plainContent = looksLikeHtml(content) ? htmlToPlainText(content) : (content || "");
-        var firstLine = plainContent.split("\n")[0].trim();
-        var displayTitle = title || firstLine || "Untitled";
-        var isUntitled = !title && !firstLine;
-
-        var titleEl = li.querySelector(".notes-list-item-title");
-        titleEl.textContent = displayTitle;
-        titleEl.classList.toggle("untitled", isUntitled);
-
-        li.querySelector(".notes-list-item-preview").textContent = plainContent.slice(0, 80);
-        li.dataset.title = (title || "").toLowerCase();
-        li.dataset.preview = plainContent.toLowerCase();
+        renderListItemContent(li, title, preview);
     }
 
     function buildListItem(note) {
         var li = document.createElement("li");
         li.className = "notes-list-item";
         li.dataset.id = note.id;
-        li.dataset.title = (note.title || "").toLowerCase();
-        li.dataset.preview = (note.content || "").toLowerCase();
         li.innerHTML =
-            '<div class="notes-list-item-title untitled">Untitled</div>' +
+            '<div class="notes-list-item-title"></div>' +
             '<div class="notes-list-item-preview"></div>' +
             '<div class="notes-list-item-date">' + (note.created_at || "") + "</div>";
+        renderListItemContent(li, note.title, note.preview);
         attachListItemListener(li);
         return li;
     }
@@ -663,7 +627,7 @@
                     hideIndicatorSoon();
                     return;
                 }
-                updateListItemDisplay(currentNoteId, result.data.title, result.data.content);
+                updateListItemDisplay(currentNoteId, result.data.title, result.data.preview);
                 showIndicator("Saved ✓");
                 hideIndicatorSoon();
             })
@@ -938,29 +902,6 @@
         }
     });
 
-    // -----------------------------------------------------------------
-    // One-time cleanup: the server-rendered list titles/previews were
-    // computed from plain-text content. A note saved by this rich-text
-    // editor stores HTML, so if any already-HTML note was rendered on
-    // this initial page load, re-derive its title/preview from the
-    // real text instead of showing raw tags.
-    // -----------------------------------------------------------------
-    listEl.querySelectorAll(".notes-list-item").forEach(function (li) {
-        var rawPreview = li.dataset.preview || "";
-        if (!looksLikeHtml(rawPreview)) return;
-
-        var plain = htmlToPlainText(rawPreview);
-        var firstLine = plain.split("\n")[0].trim();
-        var hasTitle = li.querySelector(".notes-list-item-title") && !li.querySelector(".notes-list-item-title").classList.contains("untitled");
-
-        if (!hasTitle) {
-            var titleEl = li.querySelector(".notes-list-item-title");
-            titleEl.textContent = firstLine || "Untitled";
-            titleEl.classList.toggle("untitled", !firstLine);
-        }
-        li.querySelector(".notes-list-item-preview").textContent = plain.slice(0, 80);
-        li.dataset.preview = plain.toLowerCase();
-    });
 })();
 </script>
 

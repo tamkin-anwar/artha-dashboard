@@ -31,8 +31,13 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = (
-        f"sqlite:///{os.path.join(INSTANCE_DIR, 'site.db')}"
+    # Env var override matters for tooling that needs to point at a
+    # throwaway/test DB (e.g. validating a migration) without touching the
+    # real dev DB — previously this was hardcoded and silently ignored any
+    # SQLALCHEMY_DATABASE_URI already set in the environment.
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "SQLALCHEMY_DATABASE_URI",
+        f"sqlite:///{os.path.join(INSTANCE_DIR, 'site.db')}",
     )
 
 
