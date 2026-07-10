@@ -1,6 +1,6 @@
 // static/service-worker.js
 
-const CACHE_NAME = "artha-cache-v6";
+const CACHE_NAME = "artha-cache-v7";
 const OFFLINE_URL = "/static/offline.html";
 
 const ASSETS_TO_CACHE = [
@@ -9,13 +9,14 @@ const ASSETS_TO_CACHE = [
 
     // PWA
     "/static/manifest.json",
-    "/static/favicon.svg",
 
     // Icons (match your manifest)
+    "/static/icons/favicon.ico",
+    "/static/icons/favicon-16.png",
+    "/static/icons/favicon-32.png",
+    "/static/icons/apple-touch-icon-180.png",
     "/static/icons/icon-192.png",
     "/static/icons/icon-512.png",
-    "/static/icons/icon-192-maskable.png",
-    "/static/icons/icon-512-maskable.png",
 
     // CSS
     "/static/css/style.css",
