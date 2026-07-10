@@ -1,6 +1,6 @@
 // static/service-worker.js
 
-const CACHE_NAME = "artha-cache-v9";
+const CACHE_NAME = "artha-cache-v10";
 const OFFLINE_URL = "/static/offline.html";
 
 const ASSETS_TO_CACHE = [
