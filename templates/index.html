@@ -29,6 +29,7 @@
                 <span class="eyebrow">Income</span>
             </div>
             <div class="stat-number money-positive" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(income) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -36,6 +37,7 @@
                 <span class="eyebrow">Expenses</span>
             </div>
             <div class="stat-number money-negative" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(expense) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -43,6 +45,7 @@
                 <span class="eyebrow">Net Balance</span>
             </div>
             <div class="stat-number money-gold" style="font-size:24px;">${{ "%.2f"|format(balance) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -50,6 +53,7 @@
                 <span class="eyebrow">Transactions</span>
             </div>
             <div class="stat-number" style="font-family:'JetBrains Mono',monospace; font-size:24px;">{{ transactions|length }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
     </div>
 
@@ -74,6 +78,7 @@
                 <span class="eyebrow">Income</span>
             </div>
             <div id="finance-income" class="stat-number money-positive" data-money-value="{{ income }}" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(income) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -81,6 +86,7 @@
                 <span class="eyebrow">Expenses</span>
             </div>
             <div id="finance-expense" class="stat-number money-negative" data-money-value="{{ expense }}" style="font-family:'JetBrains Mono',monospace; font-size:24px;">${{ "%.2f"|format(expense) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -88,6 +94,7 @@
                 <span class="eyebrow">Net Balance</span>
             </div>
             <div id="finance-balance" class="stat-number money-gold" data-money-value="{{ balance }}" style="font-size:24px;">${{ "%.2f"|format(balance) }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
         <div class="glass-card" style="padding:20px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
@@ -95,6 +102,7 @@
                 <span class="eyebrow">Transactions</span>
             </div>
             <div class="stat-number" style="font-family:'JetBrains Mono',monospace; font-size:24px;">{{ transactions|length }}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">This month</div>
         </div>
     </div>
 

@@ -69,6 +69,7 @@
                 class="finance-income"
                 data-money-value="{{ income }}"
             >${{ "%.2f"|format(income) }}</strong>
+            <span style="font-size:11px; color:var(--text-muted);">· This month</span>
         </p>
 
         <p>💸 Expense:
@@ -77,6 +78,7 @@
                 class="finance-expense"
                 data-money-value="{{ expense }}"
             >${{ "%.2f"|format(expense) }}</strong>
+            <span style="font-size:11px; color:var(--text-muted);">· This month</span>
         </p>
 
         <p>📊 Balance:
@@ -85,6 +87,7 @@
                 class="finance-balance"
                 data-money-value="{{ balance }}"
             >${{ "%.2f"|format(balance) }}</strong>
+            <span style="font-size:11px; color:var(--text-muted);">· This month</span>
         </p>
     </div>
 </div>

@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from ...extensions import db
 from ...models import Transaction
-from ...utils import is_ajax_request
+from ...utils import is_ajax_request, current_month_bounds
 from . import finance_bp
 
 log = logging.getLogger(__name__)
@@ -421,18 +421,35 @@ def finance_totals():
     under Gunicorn multi-worker deployments (each worker has its own copy).
     A single PostgreSQL aggregate query is fast enough for one user's data
     and is always correct across all workers.
+
+    Scoped to the current month, same as the dashboard route that renders
+    the cards this endpoint refreshes — this is only ever called to
+    live-update the dashboard's stat cards/chart after a transaction is
+    added/edited/deleted, so it needs to match what the page just showed
+    on load, not sum all-time totals back in.
     """
     uid = current_user.id
+    month_start, month_end = current_month_bounds()
 
     income = (
         db.session.query(func.sum(Transaction.amount))
-        .filter_by(user_id=uid, type="income")
+        .filter(
+            Transaction.user_id == uid,
+            Transaction.type == "income",
+            Transaction.timestamp >= month_start,
+            Transaction.timestamp < month_end,
+        )
         .scalar()
         or Decimal("0")
     )
     expense = (
         db.session.query(func.sum(Transaction.amount))
-        .filter_by(user_id=uid, type="expense")
+        .filter(
+            Transaction.user_id == uid,
+            Transaction.type == "expense",
+            Transaction.timestamp >= month_start,
+            Transaction.timestamp < month_end,
+        )
         .scalar()
         or Decimal("0")
     )

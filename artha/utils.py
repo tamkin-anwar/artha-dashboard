@@ -1,4 +1,5 @@
 import re
+from datetime import date, datetime
 from html.parser import HTMLParser
 
 from flask import request
@@ -108,3 +109,18 @@ def derive_title_and_preview(content: str):
     preview = _truncate(flat, 160)
 
     return title, preview
+
+
+def current_month_bounds() -> tuple[datetime, datetime]:
+    """Return (start, end) datetimes bounding the current calendar month,
+    for `Transaction.timestamp >= start, Transaction.timestamp < end`
+    filtering. Shared by the dashboard and /api/finance_totals so both
+    default to "this month" the same way the /finance page's month tabs
+    already do (see _month_start in finance/routes.py)."""
+    today = date.today()
+    start = datetime(today.year, today.month, 1)
+    if today.month == 12:
+        end = datetime(today.year + 1, 1, 1)
+    else:
+        end = datetime(today.year, today.month + 1, 1)
+    return start, end

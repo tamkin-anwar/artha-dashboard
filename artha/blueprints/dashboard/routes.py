@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from ...extensions import db
 from ...models import Note, Transaction
+from ...utils import current_month_bounds
 from . import dashboard_bp
 
 log = logging.getLogger(__name__)
@@ -52,20 +53,40 @@ def index():
         .order_by(Note.position.asc(), Note.id.asc())
         .all()
     )
+    # Dashboard cards are scoped to the current calendar month — same
+    # default the /finance page's month tabs use. This used to sum every
+    # transaction the user ever entered, all-time, which made the cards
+    # both misleading and inconsistent with the rest of the app.
+    month_start, month_end = current_month_bounds()
+
     transactions = (
-        Transaction.query.filter_by(user_id=current_user.id)
+        Transaction.query.filter(
+            Transaction.user_id == current_user.id,
+            Transaction.timestamp >= month_start,
+            Transaction.timestamp < month_end,
+        )
         .order_by(Transaction.position.asc(), Transaction.id.asc())
         .all()
     )
     income = (
         db.session.query(func.sum(Transaction.amount))
-        .filter_by(user_id=current_user.id, type="income")
+        .filter(
+            Transaction.user_id == current_user.id,
+            Transaction.type == "income",
+            Transaction.timestamp >= month_start,
+            Transaction.timestamp < month_end,
+        )
         .scalar()
         or 0
     )
     expense = (
         db.session.query(func.sum(Transaction.amount))
-        .filter_by(user_id=current_user.id, type="expense")
+        .filter(
+            Transaction.user_id == current_user.id,
+            Transaction.type == "expense",
+            Transaction.timestamp >= month_start,
+            Transaction.timestamp < month_end,
+        )
         .scalar()
         or 0
     )
